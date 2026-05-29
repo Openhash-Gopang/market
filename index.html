@@ -3,374 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>고팡 마켓 — 상품 검색</title>
+<title>고팡 마켓 — AI 상품 검색</title>
 <meta name="description" content="고팡 네트워크에서 원하는 상품과 서비스를 AI로 검색하세요.">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<style>
-:root {
-  --gov:    #001845;
-  --nav:    #002D72;
-  --pri:    #0057A8;
-  --pri-lt: #006CC3;
-  --pri-bg: #EBF3FC;
-  --pri-bd: #B8D4F0;
-  --sur:    #FFFFFF;
-  --bg:     #F2F5FA;
-  --bdr:    #D1D9E6;
-  --txt:    #1A202C;
-  --sub:    #4A5568;
-  --hint:   #718096;
-  --grn:    #1B6B3A; --gbg: #E6F4EC; --gbd: #A3D9B8;
-  --red:    #C01C28; --rbg: #FEE2E2;
-  --org:    #C05621; --obg: #FEF3E2;
-  --pur:    #5B2D8E; --pbg: #F0EAF8;
-  --teal:   #0E7490; --tbg: #E0F7FA;
-  --font: 'Pretendard',-apple-system,'Apple SD Gothic Neo',sans-serif;
-  --r: 5px;
-  --sh: 0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.05);
-}
-*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-html,body { height:100%; }
-body { font-family:var(--font); font-size:14px; color:var(--txt); background:var(--bg); -webkit-font-smoothing:antialiased; }
-a { text-decoration:none; color:inherit; }
-button { font-family:var(--font); }
-
-@keyframes spin { to { transform:rotate(360deg); } }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
-.spinner { width:16px;height:16px;border:2px solid rgba(0,87,168,.2);border-top-color:var(--pri);border-radius:50%;animation:spin .75s linear infinite;flex-shrink:0; }
-
-/* ── 상단바 ── */
-.topbar {
-  background:var(--nav); color:#fff; height:48px;
-  display:flex; align-items:center; padding:0 18px; gap:12px;
-  position:sticky; top:0; z-index:200;
-  box-shadow:0 2px 6px rgba(0,0,0,.25);
-}
-.tb-logo { font-size:15px;font-weight:800;letter-spacing:-.3px;display:flex;align-items:center;gap:8px; }
-.tb-logo-mark { width:26px;height:26px;border:1.5px solid rgba(255,255,255,.35);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;letter-spacing:0;flex-shrink:0; }
-.tb-badge { font-size:11px;font-weight:700;background:rgba(255,255,255,.12);border-radius:10px;padding:2px 8px;color:rgba(255,255,255,.7); }
-.tb-right { margin-left:auto;display:flex;align-items:center;gap:14px; }
-.tb-dot-wrap { display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:rgba(255,255,255,.55); }
-.tb-dot { width:5px;height:5px;border-radius:50%;background:#4ade80;animation:pulse 2s infinite; }
-.tb-link { font-size:13px;font-weight:600;color:rgba(255,255,255,.55);transition:color .15s; }
-.tb-link:hover { color:#fff; }
-
-/* ── 히어로 ── */
-.hero {
-  background:linear-gradient(150deg,var(--gov) 0%,#002D72 100%);
-  color:#fff; padding:20px 18px 18px;
-  border-bottom:2px solid var(--pri-lt);
-}
-.hero-title { font-size:20px;font-weight:800;letter-spacing:-.4px;margin-bottom:4px; }
-.hero-title em { color:#90C4FF;font-style:normal; }
-.hero-sub { font-size:13px;color:rgba(255,255,255,.6);margin-bottom:16px; }
-
-/* ── 검색 박스 ── */
-.search-wrap {
-  display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;
-}
-.search-box {
-  flex:1; min-width:220px;
-  background:rgba(255,255,255,.08);
-  border:1.5px solid rgba(255,255,255,.2);
-  border-radius:var(--r); padding:10px 14px;
-  font-family:var(--font); font-size:14px; color:#fff;
-  outline:none; transition:border-color .15s;
-  resize:none; line-height:1.5;
-}
-.search-box::placeholder { color:rgba(255,255,255,.35); }
-.search-box:focus { border-color:rgba(255,255,255,.5); background:rgba(255,255,255,.12); }
-.btn-search {
-  background:var(--pri); color:#fff; border:none;
-  border-radius:var(--r); padding:10px 20px;
-  font-family:var(--font); font-size:14px; font-weight:700;
-  cursor:pointer; white-space:nowrap; transition:background .15s;
-  display:flex; align-items:center; gap:7px; height:44px;
-}
-.btn-search:hover { background:var(--pri-lt); }
-.btn-search:disabled { opacity:.5; cursor:default; }
-
-/* ── 필터 바 ── */
-.filter-bar {
-  display:flex; gap:8px; padding:12px 18px; flex-wrap:wrap;
-  background:var(--sur); border-bottom:1px solid var(--bdr);
-  align-items:center;
-}
-.filter-sel {
-  background:var(--sur); border:1px solid var(--bdr); border-radius:var(--r);
-  font-family:var(--font); font-size:12px; color:var(--sub);
-  padding:5px 10px; outline:none; cursor:pointer;
-}
-.filter-sel:focus { border-color:var(--pri); }
-.filter-chip {
-  font-size:11px; font-weight:700; padding:3px 10px;
-  border-radius:10px; border:1px solid; cursor:pointer;
-  transition:all .12s; white-space:nowrap;
-}
-.chip-all    { background:var(--pri-bg);color:var(--pri);border-color:var(--pri-bd); }
-.chip-cat    { background:var(--bg);color:var(--hint);border-color:var(--bdr); }
-.chip-cat.on { background:var(--pri-bg);color:var(--pri);border-color:var(--pri-bd); }
-.result-count { font-size:12px;color:var(--hint);margin-left:auto; }
-
-/* ── 본문 레이아웃 ── */
-.page-body { max-width:960px; margin:0 auto; padding:20px 18px 60px; }
-
-/* ── AI 응답 배너 ── */
-.ai-banner {
-  background:var(--sur); border:1px solid var(--pri-bd);
-  border-left:3px solid var(--pri); border-radius:var(--r);
-  padding:14px 16px; margin-bottom:20px;
-  font-size:13px; line-height:1.7; color:var(--sub);
-  animation:fadeIn .3s ease;
-}
-.ai-banner-hd { font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--pri);margin-bottom:6px;text-transform:uppercase; }
-
-/* ── 판매자 카드 그리드 ── */
-.seller-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; margin-bottom:24px; }
-
-.seller-card {
-  background:var(--sur); border:1px solid var(--bdr);
-  border-radius:8px; overflow:hidden; box-shadow:var(--sh);
-  transition:box-shadow .15s, border-color .15s;
-  animation:fadeIn .3s ease;
-  cursor:pointer;
-}
-.seller-card:hover { box-shadow:0 4px 16px rgba(0,87,168,.12); border-color:var(--pri-bd); }
-.card-hd {
-  background:linear-gradient(135deg,var(--gov) 0%,var(--pri) 100%);
-  padding:14px 16px; display:flex; align-items:center; gap:12px;
-}
-.card-avatar {
-  width:42px;height:42px;border-radius:50%;
-  background:rgba(255,255,255,.15); border:1.5px solid rgba(255,255,255,.3);
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;font-weight:800;color:#fff;flex-shrink:0;
-}
-.card-name { font-size:14px;font-weight:800;color:#fff;letter-spacing:-.2px; }
-.card-type { font-size:11px;color:rgba(255,255,255,.6);margin-top:1px; }
-.card-match-score {
-  margin-left:auto; background:rgba(255,255,255,.15);
-  border:1px solid rgba(255,255,255,.3); border-radius:10px;
-  padding:3px 9px; font-size:11px;font-weight:700;color:#fff;
-}
-.card-body { padding:14px 16px; }
-.card-meta { font-size:12px;color:var(--hint);margin-bottom:10px; }
-
-/* 재고 미리보기 */
-.inv-preview { display:flex;flex-direction:column;gap:6px; }
-.inv-item {
-  display:flex;align-items:center;justify-content:space-between;
-  padding:7px 10px; background:var(--bg); border-radius:var(--r);
-  font-size:12px;
-}
-.inv-item-name { font-weight:600;color:var(--txt); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.inv-price { font-weight:700;color:var(--grn);white-space:nowrap;margin:0 8px; }
-.inv-qty   { font-size:11px;color:var(--hint);white-space:nowrap; }
-.inv-more  { font-size:11px;color:var(--hint);text-align:center;padding:4px; }
-
-.card-actions { padding:0 16px 14px; display:flex; gap:8px; }
-.btn-visit {
-  flex:1; padding:8px; border-radius:var(--r);
-  font-family:var(--font); font-size:13px; font-weight:700;
-  cursor:pointer; text-align:center; transition:background .12s;
-  background:var(--pri); color:#fff; border:none;
-}
-.btn-visit:hover { background:var(--pri-lt); }
-.btn-profile {
-  padding:8px 14px; border-radius:var(--r);
-  font-family:var(--font); font-size:13px; font-weight:700;
-  cursor:pointer; background:none; color:var(--pri);
-  border:1.5px solid var(--pri-bd); transition:background .12s;
-}
-.btn-profile:hover { background:var(--pri-bg); }
-
-/* ── 빈 상태 ── */
-.empty-state { text-align:center; padding:60px 20px; color:var(--hint); }
-.empty-icon  { font-size:40px; margin-bottom:12px; }
-.empty-title { font-size:16px;font-weight:700;color:var(--sub);margin-bottom:6px; }
-
-/* ── 상품 검색 결과 (inventory 직접) ── */
-.item-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:20px; }
-.item-card {
-  background:var(--sur); border:1px solid var(--bdr); border-radius:8px;
-  padding:14px; box-shadow:var(--sh); animation:fadeIn .3s ease;
-  display:flex; flex-direction:column; gap:8px;
-}
-.item-name { font-size:14px;font-weight:700;color:var(--txt); }
-.item-seller { font-size:11px;color:var(--hint); }
-.item-price { font-size:16px;font-weight:800;color:var(--grn); }
-.item-meta  { font-size:11px;color:var(--hint); display:flex; gap:8px; flex-wrap:wrap; }
-.item-cat   { font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--gbg);color:var(--grn);border:1px solid var(--gbd); }
-.btn-buy {
-  margin-top:auto; padding:8px; border-radius:var(--r);
-  font-family:var(--font); font-size:13px; font-weight:700;
-  cursor:pointer; background:var(--pri); color:#fff; border:none;
-  transition:background .12s;
-}
-.btn-buy:hover { background:var(--pri-lt); }
-.btn-buy:disabled { background:var(--bdr);color:var(--hint);cursor:default; }
-
-/* ── 평점 & 거리 ── */
-.rating-row {
-  display:flex; align-items:center; gap:8px; margin-top:4px; flex-wrap:wrap;
-}
-.stars-display { display:flex; gap:1px; }
-.star { font-size:13px; }
-.star.full  { color:#F59E0B; }
-.star.half  { color:#F59E0B; opacity:.6; }
-.star.empty { color:#D1D9E6; }
-.rating-score { font-size:13px;font-weight:800;color:#92400E; }
-.rating-count { font-size:11px;color:var(--hint); }
-.rating-volume { font-size:11px;color:var(--grn);font-weight:600; }
-.distance-badge {
-  font-size:11px;font-weight:600;padding:2px 8px;
-  background:var(--pri-bg);color:var(--pri);border:1px solid var(--pri-bd);
-  border-radius:10px;white-space:nowrap;
-}
-.no-rating { font-size:11px;color:var(--hint);font-style:italic; }
-
-/* ── 리뷰 모달 ── */
-.review-modal-bg {
-  display:none; position:fixed; inset:0; z-index:9500;
-  background:rgba(0,0,0,.5);
-}
-.review-modal-bg.open { display:flex; align-items:center; justify-content:center; padding:20px; }
-.review-modal {
-  background:var(--sur); border-radius:10px; padding:24px;
-  width:min(420px,100%); box-shadow:0 20px 60px rgba(0,0,0,.2);
-}
-.review-modal-title { font-size:15px;font-weight:800;margin-bottom:4px; }
-.review-modal-sub   { font-size:12px;color:var(--hint);margin-bottom:18px; }
-.stars-input { display:flex; gap:6px; margin-bottom:16px; }
-.star-btn {
-  font-size:28px; cursor:pointer; background:none; border:none;
-  color:#D1D9E6; transition:color .1s; padding:0;
-}
-.star-btn.on { color:#F59E0B; }
-.star-btn:hover { color:#F59E0B; }
-.review-textarea {
-  width:100%; padding:10px 12px; border:1px solid var(--bdr); border-radius:var(--r);
-  font-family:var(--font); font-size:13px; color:var(--txt); resize:none;
-  outline:none; margin-bottom:8px;
-}
-.review-textarea:focus { border-color:var(--pri); }
-.review-weight-info {
-  font-size:11px;color:var(--hint);background:var(--bg);
-  border-radius:var(--r);padding:8px 10px;margin-bottom:14px;line-height:1.6;
-}
-.review-actions { display:flex; gap:8px; justify-content:flex-end; }
-.btn-skip    { background:none;border:1px solid var(--bdr);border-radius:var(--r);padding:8px 16px;font-family:var(--font);font-size:13px;cursor:pointer;color:var(--hint); }
-.btn-review  { background:var(--pri);color:#fff;border:none;border-radius:var(--r);padding:8px 20px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer; }
-.btn-review:disabled { opacity:.5;cursor:default; }
-.review-msg  { font-size:12px;color:var(--red);text-align:center;margin-top:8px;min-height:14px; }
-.seller-panel-bg {
-  display:none; position:fixed; inset:0; z-index:8000;
-  background:rgba(0,0,0,.35);
-}
-.seller-panel-bg.open { display:block; }
-.seller-panel {
-  position:fixed; top:0; right:0; bottom:0; width:min(480px,100vw);
-  background:var(--sur); box-shadow:-4px 0 24px rgba(0,0,0,.15);
-  display:flex; flex-direction:column; overflow:hidden;
-  transform:translateX(100%); transition:transform .25s ease;
-}
-.seller-panel-bg.open .seller-panel { transform:translateX(0); }
-.sp-header {
-  background:linear-gradient(135deg,var(--gov) 0%,var(--pri) 100%);
-  padding:16px 20px; display:flex; align-items:center; gap:14px; flex-shrink:0;
-}
-.sp-avatar {
-  width:48px;height:48px;border-radius:50%;
-  background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;font-weight:800;color:#fff;flex-shrink:0;
-}
-.sp-name  { font-size:16px;font-weight:800;color:#fff; }
-.sp-type  { font-size:12px;color:rgba(255,255,255,.6);margin-top:2px; }
-.sp-close {
-  margin-left:auto; background:none; border:none; color:rgba(255,255,255,.7);
-  font-size:22px; cursor:pointer; padding:4px; line-height:1;
-}
-.sp-close:hover { color:#fff; }
-.sp-meta {
-  padding:12px 20px; background:var(--bg); border-bottom:1px solid var(--bdr);
-  font-size:12px; color:var(--hint); display:flex; gap:14px; flex-wrap:wrap; flex-shrink:0;
-}
-.sp-body { flex:1; overflow-y:auto; padding:16px 20px; }
-.sp-section-hd {
-  font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
-  color:var(--hint);margin-bottom:10px;margin-top:4px;
-}
-.sp-inv-table { width:100%;border-collapse:collapse;margin-bottom:20px; }
-.sp-inv-table th {
-  font-size:11px;font-weight:700;color:var(--hint);text-align:left;
-  padding:7px 10px;border-bottom:1px solid var(--bdr);background:var(--bg);
-}
-.sp-inv-table td { padding:10px 10px;border-bottom:1px solid var(--bdr);font-size:13px;vertical-align:middle; }
-.sp-inv-table tr:last-child td { border-bottom:none; }
-.sp-inv-table tr:hover td { background:var(--bg); }
-.sp-name-cell { font-weight:600;color:var(--txt); }
-.sp-cat-pill {
-  font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;
-  background:var(--gbg);color:var(--grn);border:1px solid var(--gbd);
-  white-space:nowrap;
-}
-.sp-price { font-weight:700;color:var(--grn);white-space:nowrap; }
-.sp-qty   { font-size:12px;color:var(--hint);white-space:nowrap; }
-.sp-delivery { font-size:11px;color:var(--hint); }
-.sp-buy-btn {
-  background:var(--pri);color:#fff;border:none;border-radius:var(--r);
-  padding:6px 14px;font-family:var(--font);font-size:12px;font-weight:700;
-  cursor:pointer;white-space:nowrap;transition:background .12s;
-}
-.sp-buy-btn:hover { background:var(--pri-lt); }
-.sp-buy-btn:disabled { background:var(--bdr);color:var(--hint);cursor:default; }
-.sp-pub-info { background:var(--bg);border-radius:var(--r);padding:12px 14px;font-size:13px; }
-.sp-pub-row  { display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--bdr); }
-.sp-pub-row:last-child { border-bottom:none; }
-.sp-pub-key  { color:var(--hint);width:80px;flex-shrink:0;font-size:12px; }
-.sp-pub-val  { color:var(--txt);flex:1; }
-.modal-bg {
-  display:none; position:fixed; inset:0; z-index:9000;
-  background:rgba(0,0,0,.45);
-}
-.modal-bg.open { display:flex; align-items:center; justify-content:center; padding:20px; }
-.modal {
-  background:var(--sur); border-radius:10px; padding:24px;
-  width:min(440px,100%); box-shadow:0 20px 60px rgba(0,0,0,.2);
-  max-height:90vh; overflow-y:auto;
-}
-.modal-title { font-size:16px;font-weight:800;margin-bottom:16px; }
-.modal-field { margin-bottom:12px; }
-.modal-label { font-size:11px;font-weight:700;color:var(--hint);display:block;margin-bottom:4px;text-transform:uppercase; }
-.modal-field input { width:100%;padding:8px 10px;border:1px solid var(--bdr);border-radius:var(--r);font-family:var(--font);font-size:13px;color:var(--txt);outline:none; }
-.modal-field input:focus { border-color:var(--pri); }
-.modal-total { background:var(--bg);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 14px;margin:14px 0;font-size:13px; }
-.modal-row { display:flex;justify-content:space-between;margin-bottom:4px;color:var(--hint); }
-.modal-row.total { font-weight:700;color:var(--txt);margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr); }
-.modal-row span:last-child { font-weight:600;color:var(--grn); }
-.modal-actions { display:flex;gap:8px;justify-content:flex-end; }
-.btn-cancel { background:none;border:1px solid var(--bdr);border-radius:var(--r);padding:8px 16px;font-family:var(--font);font-size:13px;cursor:pointer;color:var(--sub); }
-.btn-confirm { background:var(--pri);color:#fff;border:none;border-radius:var(--r);padding:8px 20px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer; }
-.btn-confirm:disabled { opacity:.5;cursor:default; }
-.modal-msg { font-size:12px;color:var(--red);text-align:center;margin-top:8px;min-height:16px; }
-
-/* ── 탭 ── */
-.view-tabs { display:flex;gap:0;border-bottom:2px solid var(--bdr);margin-bottom:20px; }
-.view-tab { padding:8px 20px;font-size:13px;font-weight:700;color:var(--hint);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .12s,border-color .12s; }
-.view-tab.active { color:var(--pri);border-bottom-color:var(--pri); }
-
-/* ── 로딩 ── */
-.loading-wrap { display:flex;align-items:center;gap:10px;color:var(--hint);font-size:13px;padding:20px 0; }
-
-@media(max-width:600px) {
-  .hero-title { font-size:17px; }
-  .seller-grid { grid-template-columns:1fr; }
-  .item-grid { grid-template-columns:1fr 1fr; }
-}
-</style>
+<link rel="stylesheet" href="css/market.css">
 </head>
 <body>
 
@@ -405,16 +42,17 @@ button { font-family:var(--font); }
 
 <!-- 필터 바 -->
 <div class="filter-bar" id="filter-bar" style="display:none">
-  <span class="filter-chip chip-all" onclick="filterCat('')" id="chip-all">전체</span>
+  <span class="filter-chip chip-all" onclick="filterCat('')">전체</span>
   <span class="filter-chip chip-cat" onclick="filterCat('농산물')" data-cat="농산물">농산물</span>
   <span class="filter-chip chip-cat" onclick="filterCat('공산품')" data-cat="공산품">공산품</span>
   <span class="filter-chip chip-cat" onclick="filterCat('서비스')" data-cat="서비스">서비스</span>
-  <span class="filter-chip chip-cat" onclick="filterCat('운송')" data-cat="운송">운송</span>
-  <span class="filter-chip chip-cat" onclick="filterCat('의료')" data-cat="의료">의료</span>
-  <span class="filter-chip chip-cat" onclick="filterCat('교육')" data-cat="교육">교육</span>
+  <span class="filter-chip chip-cat" onclick="filterCat('운송')"   data-cat="운송">운송</span>
+  <span class="filter-chip chip-cat" onclick="filterCat('의료')"   data-cat="의료">의료</span>
+  <span class="filter-chip chip-cat" onclick="filterCat('교육')"   data-cat="교육">교육</span>
   <span class="filter-chip chip-cat" onclick="filterCat('디지털')" data-cat="디지털">디지털</span>
   <select class="filter-sel" id="sort-sel" onchange="applySort()">
     <option value="match">관련도순</option>
+    <option value="rating">평점순</option>
     <option value="price_asc">가격 낮은순</option>
     <option value="price_desc">가격 높은순</option>
     <option value="qty_desc">재고 많은순</option>
@@ -424,8 +62,6 @@ button { font-family:var(--font); }
 
 <!-- 본문 -->
 <div class="page-body">
-
-  <!-- 빈 초기 상태 -->
   <div class="empty-state" id="empty-state">
     <div class="empty-icon">🛒</div>
     <div class="empty-title">무엇을 찾고 계신가요?</div>
@@ -435,27 +71,21 @@ button { font-family:var(--font); }
     </div>
   </div>
 
-  <!-- AI 분석 배너 -->
   <div class="ai-banner" id="ai-banner" style="display:none">
     <div class="ai-banner-hd">AI 분석 결과</div>
     <div id="ai-banner-text"></div>
   </div>
 
-  <!-- 뷰 탭 -->
   <div class="view-tabs" id="view-tabs" style="display:none">
     <button class="view-tab active" id="tab-sellers" onclick="switchView('sellers',this)">판매자별</button>
-    <button class="view-tab" id="tab-items" onclick="switchView('items',this)">상품별</button>
+    <button class="view-tab"        id="tab-items"   onclick="switchView('items',this)">상품별</button>
   </div>
 
-  <!-- 판매자 카드 그리드 -->
   <div class="seller-grid" id="seller-grid" style="display:none"></div>
-
-  <!-- 상품 카드 그리드 -->
-  <div class="item-grid" id="item-grid" style="display:none"></div>
-
+  <div class="item-grid"   id="item-grid"   style="display:none"></div>
 </div>
 
-<!-- 판매자 상세 슬라이드 패널 -->
+<!-- 판매자 슬라이드 패널 -->
 <div class="seller-panel-bg" id="sp-bg" onclick="closeSellerPanel(event)">
   <div class="seller-panel" id="seller-panel">
     <div class="sp-header">
@@ -468,11 +98,9 @@ button { font-family:var(--font); }
     </div>
     <div class="sp-meta" id="sp-meta"></div>
     <div class="sp-body">
-      <!-- 공개 정보 -->
       <div class="sp-section-hd">공개 정보</div>
       <div class="sp-pub-info" id="sp-pub-info"></div>
 
-      <!-- 재고 목록 -->
       <div class="sp-section-hd" style="margin-top:18px">재고 목록</div>
       <table class="sp-inv-table">
         <thead>
@@ -484,10 +112,17 @@ button { font-family:var(--font); }
             <th></th>
           </tr>
         </thead>
-        <tbody id="sp-inv-tbody">
-          <tr><td colspan="5" style="text-align:center;color:var(--hint);padding:20px">불러오는 중…</td></tr>
-        </tbody>
+        <tbody id="sp-inv-tbody"></tbody>
       </table>
+
+      <!-- 리뷰 목록 -->
+      <div class="sp-section-hd" style="margin-top:18px">
+        구매 후기
+        <span id="sp-reviews-summary" style="font-size:10px;font-weight:400;color:var(--hint);margin-left:6px"></span>
+      </div>
+      <div id="sp-reviews-wrap">
+        <div id="sp-reviews-list"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -508,16 +143,16 @@ button { font-family:var(--font); }
     </div>
     <div class="modal-field">
       <span class="modal-label">수량</span>
-      <input type="number" id="m-qty" min="1" step="1" value="1" oninput="updateModalTotal()">
+      <input type="number" id="m-qty" min="1" step="1" value="1" oninput="updateBuyTotal()">
     </div>
     <div class="modal-field">
-      <span class="modal-label">구매 목적</span>
+      <span class="modal-label">구매 목적 (선택)</span>
       <input type="text" id="m-purpose" placeholder="업무용, 개인소비…">
     </div>
     <div class="modal-total">
       <div class="modal-row"><span>단가</span><span id="m-unit-price">₮0</span></div>
       <div class="modal-row"><span>수량</span><span id="m-qty-display">1</span></div>
-      <div class="modal-row"><span>GDC 수수료 (0.20%·판매자 부담)</span><span id="m-fee">₮0</span></div>
+      <div class="modal-row"><span>GDC 수수료 <small style="font-size:10px;background:var(--obg);color:var(--org);border-radius:3px;padding:1px 5px">0.20% · 판매자 부담</small></span><span id="m-fee">₮0</span></div>
       <div class="modal-row total"><span>구매자 지출</span><span id="m-total">₮0</span></div>
       <div class="modal-row" style="margin-top:4px"><span>판매자 수령</span><span id="m-net">₮0</span></div>
     </div>
@@ -525,680 +160,56 @@ button { font-family:var(--font); }
       ⚠ 로그인이 필요합니다. 고팡 앱에서 접속하거나 URL에 ?session=토큰을 포함하세요.
     </div>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-cancel" onclick="closeBuyModal()">취소</button>
       <button class="btn-confirm" id="m-confirm-btn" onclick="confirmBuy()">구매 확정</button>
     </div>
     <div class="modal-msg" id="m-msg"></div>
   </div>
 </div>
 
-<script>
-const SUPA_URL  = 'https://ebbecjfrwaswbdybbgiu.supabase.co';
-const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViYmVjamZyd2Fzd2JkeWJiZ2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NjE5ODQsImV4cCI6MjA5NTEzNzk4NH0.H2ahQKtWdSke04Pdi3hDY86pdTx7UUKPUpQMlS_zciA';
-const HDR = { 'apikey': SUPA_ANON, 'Authorization': 'Bearer ' + SUPA_ANON };
-
-const DS_KEY      = 'sk-e4a6f005aecf43d4aa60e77bb71de14c';
-const DS_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
-const GDC_FEE     = 0.0020;
-
-const params = new URLSearchParams(location.search);
-let _viewerGuid = null;   // 로그인한 구매자 guid
-let _allItems   = [];     // 전체 검색된 inventory 행
-let _allSellers = [];     // 판매자별 집계
-let _ratingMap  = {};     // guid → seller_ratings 행
-let _viewerLat  = null;   // 구매자 위도
-let _viewerLng  = null;   // 구매자 경도
-let _reviewStar = 0;      // 현재 선택된 별점
-let _lastTxId   = null;   // 구매 완료된 tx_id (리뷰용)
-let _curCat     = '';
-let _buyItem    = null;
-
-// ── 세션 토큰으로 구매자 확인 ────────────────────────
-async function _resolveViewer() {
-  // GPS 위치 요청 (거리 계산용)
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      pos => { _viewerLat = pos.coords.latitude; _viewerLng = pos.coords.longitude; },
-      ()  => {}  // 거부 시 조용히 무시
-    );
-  }
-  const session = params.get('session');
-  if (session) {
-    try {
-      const res = await fetch(
-        `${SUPA_URL}/rest/v1/gopang_sessions`+
-        `?token=eq.${session}&select=guid&limit=1`,
-        { headers: HDR }
-      );
-      const [row] = await res.json();
-      if (row?.guid) { _viewerGuid = row.guid; return; }
-    } catch(e) {}
-  }
-  try {
-    const raw = [navigator.userAgent,navigator.language,
-      screen.width+'x'+screen.height,
-      Intl.DateTimeFormat().resolvedOptions().timeZone].join('|');
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
-    const fp  = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    const res = await fetch(
-      `${SUPA_URL}/rest/v1/users?device_fp=eq.${fp}&select=guid&limit=1`,
-      { headers: HDR }
-    );
-    const [row] = await res.json();
-    if (row?.guid) _viewerGuid = row.guid;
-  } catch(e) {}
-}
-
-// ── 검색 실행 ────────────────────────────────────────
-async function runSearch() {
-  const q = document.getElementById('search-input').value.trim();
-  if (!q) return;
-  setLoading(true);
-  document.getElementById('empty-state').style.display = 'none';
-  document.getElementById('ai-banner').style.display   = 'none';
-  document.getElementById('filter-bar').style.display  = 'none';
-  document.getElementById('view-tabs').style.display   = 'none';
-  document.getElementById('seller-grid').style.display = 'none';
-  document.getElementById('item-grid').style.display   = 'none';
-
-  try {
-    // ── Step 1: Supabase에서 전체 공개 재고 로드 ────
-    const invRes = await fetch(
-      `${SUPA_URL}/rest/v1/inventory?is_public=eq.true&select=*&order=name.asc`,
-      { headers: HDR }
-    );
-    const inventory = await invRes.json();
-
-    // ── Step 2: 판매자 프로필 로드 ──────────────────
-    const ownerGuids = [...new Set(inventory.map(i=>i.owner_guid))];
-    let profileMap = {};
-    if (ownerGuids.length) {
-      const profRes = await fetch(
-        `${SUPA_URL}/rest/v1/user_profiles?guid=in.(${ownerGuids.join(',')})&select=guid,name,entity_type,address,extra`,
-        { headers: HDR }
-      );
-      const profiles = await profRes.json();
-      profiles.forEach(p => { profileMap[p.guid] = p; });
-    }
-
-    // ── Step 3: DeepSeek AI로 관련도 분석 ───────────
-    const catalogText = inventory.map(i =>
-      `ID:${i.id}|품목:${i.name}|분류:${i.category||'기타'}|단가:₮${i.unit_price}|재고:${i.quantity}${i.unit||'개'}|판매자:${profileMap[i.owner_guid]?.name||i.owner_guid.slice(0,8)}`
-    ).join('\n');
-
-    const aiPrompt = `당신은 고팡 마켓의 AI 검색 엔진입니다.
-
-사용자 요청: "${q}"
-
-현재 고팡 마켓 재고 목록:
-${catalogText}
-
-위 재고 중에서 사용자 요청과 관련 있는 품목의 ID를 관련도 높은 순서로 최대 20개 추출하세요.
-
-응답은 반드시 아래 JSON 형식만 출력하세요 (다른 텍스트 없이):
-{
-  "analysis": "사용자 요청 분석 요약 (2~3문장, 한국어)",
-  "matched_ids": ["품목ID1", "품목ID2", ...],
-  "search_keywords": ["키워드1", "키워드2"]
-}`;
-
-    const aiRes = await fetch(DS_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+DS_KEY },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role:'user', content: aiPrompt }],
-        max_tokens: 800, temperature: 0.1,
-      })
-    });
-    const aiData  = await aiRes.json();
-    const aiText  = aiData.choices?.[0]?.message?.content || '{}';
-    let aiResult  = {};
-    try {
-      const clean = aiText.replace(/```json|```/g,'').trim();
-      aiResult = JSON.parse(clean);
-    } catch(e) { aiResult = { analysis: aiText, matched_ids: [] }; }
-
-    // ── Step 4: 결과 필터링 및 정렬 ─────────────────
-    const matchedSet = new Set(aiResult.matched_ids || []);
-    let matched = matchedSet.size > 0
-      ? inventory.filter(i => matchedSet.has(i.id))
-      : inventory;  // AI 매칭 없으면 전체 표시
-
-    // 매칭된 순서 유지
-    if (matchedSet.size > 0) {
-      matched.sort((a,b) => {
-        const ia = aiResult.matched_ids.indexOf(a.id);
-        const ib = aiResult.matched_ids.indexOf(b.id);
-        return ia - ib;
-      });
-    }
-
-    _allItems = matched.map(i => ({ ...i, _profile: profileMap[i.owner_guid] }));
-
-    // 판매자별 집계
-    const sellerMap = {};
-    _allItems.forEach(i => {
-      const g = i.owner_guid;
-      if (!sellerMap[g]) sellerMap[g] = { profile: i._profile, items: [], guid: g };
-      sellerMap[g].items.push(i);
-    });
-    _allSellers = Object.values(sellerMap);
-
-    // ── Step 5: 판매자 평점 + 거리 로드 ─────────────
-    if (ownerGuids.length) {
-      try {
-        const rtRes = await fetch(
-          `${SUPA_URL}/rest/v1/seller_ratings?seller_guid=in.(${ownerGuids.join(',')})&select=*`,
-          { headers: HDR }
-        );
-        const ratings = await rtRes.json();
-        _ratingMap = {};
-        if (Array.isArray(ratings)) ratings.forEach(r => { _ratingMap[r.seller_guid] = r; });
-      } catch(e) { console.warn('[Ratings]', e.message); }
-    }
-    if (aiResult.analysis) {
-      document.getElementById('ai-banner-text').textContent = aiResult.analysis;
-      document.getElementById('ai-banner').style.display = '';
-    }
-
-    // ── 렌더 ─────────────────────────────────────
-    document.getElementById('filter-bar').style.display = 'flex';
-    document.getElementById('view-tabs').style.display  = 'flex';
-    renderSellers(_allSellers);
-    renderItems(_allItems);
-    switchView('sellers', document.getElementById('tab-sellers'));
-    document.getElementById('result-count').textContent = `${_allItems.length}개 상품 · ${_allSellers.length}명 판매자`;
-
-  } catch(e) {
-    document.getElementById('ai-banner-text').textContent = '검색 중 오류가 발생했습니다: ' + e.message;
-    document.getElementById('ai-banner').style.display = '';
-  } finally {
-    setLoading(false);
-  }
-}
-
-// ── 별점 HTML 생성 ────────────────────────────────────
-function starsHtml(avg) {
-  let html = '';
-  for (let i=1; i<=5; i++) {
-    if (avg >= i)        html += '<span class="star full">★</span>';
-    else if (avg >= i-.5) html += '<span class="star half">★</span>';
-    else                  html += '<span class="star empty">★</span>';
-  }
-  return html;
-}
-
-// ── 거리 계산 (Haversine) ────────────────────────────
-function _distKm(lat1, lng1, lat2, lng2) {
-  const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-// ── 판매자 카드 렌더 ─────────────────────────────────
-function renderSellers(sellers) {
-  const grid = document.getElementById('seller-grid');
-  if (!sellers.length) {
-    grid.innerHTML='<div class="empty-state"><div class="empty-icon">😔</div><div class="empty-title">검색 결과가 없습니다</div></div>';
-    grid.style.display=''; return;
-  }
-  grid.innerHTML = sellers.map((s, idx) => {
-    const p    = s.profile || {};
-    const name = p.name || s.guid.slice(0,8)+'…';
-    const etab = {person:'개인',org:'기관',thing:'사물'};
-    const biz  = p.extra?.public?.업종 || '';
-    const addr = p.address || '';
-    const previewItems = s.items.slice(0,3);
-    const score = Math.round(100 - idx * (50/Math.max(sellers.length,1)));
-
-    // 평점
-    const rt = _ratingMap[s.guid];
-    const ratingHtml = rt?.review_count > 0
-      ? `<div class="rating-row">
-           <div class="stars-display">${starsHtml(rt.weighted_avg)}</div>
-           <span class="rating-score">${rt.weighted_avg}</span>
-           <span class="rating-count">(리뷰 ${rt.review_count}건)</span>
-           <span class="rating-volume">총 ₮${fmtN(rt.total_volume)}</span>
-         </div>`
-      : '<div class="no-rating">아직 리뷰 없음</div>';
-
-    // 거리
-    let distHtml = '';
-    const gpsStr = p.extra?.public?.gps || p.extra?.public?.GPS || '';
-    if (gpsStr && _viewerLat !== null) {
-      const parts = gpsStr.split(',').map(Number);
-      if (parts.length===2 && !isNaN(parts[0])) {
-        const km = _distKm(_viewerLat, _viewerLng, parts[0], parts[1]);
-        distHtml = `<span class="distance-badge">📍 ${km<1?Math.round(km*1000)+'m':km.toFixed(1)+'km'}</span>`;
-      }
-    } else if (addr) {
-      distHtml = `<span style="font-size:11px;color:var(--hint)">📍 ${_e(addr)}</span>`;
-    }
-
-    return `
-    <div class="seller-card">
-      <div class="card-hd">
-        <div class="card-avatar">${name.slice(0,1).toUpperCase()}</div>
-        <div style="flex:1;min-width:0">
-          <div class="card-name">${_e(name)}</div>
-          <div class="card-type">${etab[p.entity_type]||'판매자'}${biz?' · '+_e(biz):''}</div>
-          ${ratingHtml}
-        </div>
-        <div class="card-match-score">일치 ${score}%</div>
-      </div>
-      <div class="card-body">
-        ${distHtml?`<div class="card-meta" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">${distHtml}</div>`:''}
-        <div class="inv-preview">
-          ${previewItems.map(i=>`
-          <div class="inv-item">
-            <span class="inv-item-name">${_e(i.name)}</span>
-            <span class="inv-price">₮${fmtN(i.unit_price)}</span>
-            <span class="inv-qty">재고 ${fmtN(i.quantity)}${_e(i.unit||'개')}</span>
-          </div>`).join('')}
-          ${s.items.length>3?`<div class="inv-more">+ ${s.items.length-3}개 더보기</div>`:''}
-        </div>
-      </div>
-      <div class="card-actions">
-        <button class="btn-visit" onclick="visitSeller('${s.guid}')">재고 보기 / 구매</button>
-        <button class="btn-profile" onclick="visitProfile('${s.guid}')">공개 프로필</button>
-      </div>
-    </div>`;
-  }).join('');
-  grid.style.display = 'grid';
-}
-
-// ── 상품 카드 렌더 ────────────────────────────────────
-function renderItems(items) {
-  const grid = document.getElementById('item-grid');
-  if (!items.length) { grid.innerHTML=''; return; }
-  const catColor = { 농산물:'var(--gbg)',공산품:'var(--pri-bg)',서비스:'var(--pbg)',운송:'var(--tbg)',의료:'var(--rbg)',교육:'var(--ybg)' };
-  grid.innerHTML = items.map(i => {
-    const pname = i._profile?.name || i.owner_guid.slice(0,8)+'…';
-    const soldOut = i.quantity <= 0;
-    return `
-    <div class="item-card">
-      <span class="item-cat">${_e(i.category||'기타')}</span>
-      <div class="item-name">${_e(i.name)}</div>
-      <div class="item-seller">판매자: ${_e(pname)}</div>
-      <div class="item-price">₮${fmtN(i.unit_price)} <span style="font-size:11px;font-weight:400;color:var(--hint)">/ ${_e(i.unit||'개')}</span></div>
-      <div class="item-meta">
-        <span>재고 ${fmtN(i.quantity)}${_e(i.unit||'개')}</span>
-        ${i.delivery?`<span>· ${_e(i.delivery)}</span>`:''}
-      </div>
-      <button class="btn-buy" ${soldOut?'disabled':''} onclick="openModal(${JSON.stringify(i).replace(/"/g,'&quot;')}, '${_e(pname)}')">
-        ${soldOut?'품절':'구매'}
-      </button>
-    </div>`;
-  }).join('');
-  grid.style.display = 'grid';
-}
-
-// ── 필터 ─────────────────────────────────────────────
-function filterCat(cat) {
-  _curCat = cat;
-  document.querySelectorAll('[data-cat]').forEach(c => c.classList.toggle('on', c.dataset.cat===cat));
-  document.getElementById('chip-all').classList.toggle('chip-all', !cat);
-  const items   = cat ? _allItems.filter(i=>i.category===cat) : _allItems;
-  const sellers = cat ? _allSellers.filter(s=>s.items.some(i=>i.category===cat)) : _allSellers;
-  renderSellers(sellers);
-  renderItems(items);
-  document.getElementById('result-count').textContent = `${items.length}개 상품 · ${sellers.length}명 판매자`;
-}
-
-function applySort() {
-  const v = document.getElementById('sort-sel').value;
-  const items = _curCat ? _allItems.filter(i=>i.category===_curCat) : [..._allItems];
-  if (v==='price_asc')  items.sort((a,b)=>a.unit_price-b.unit_price);
-  if (v==='price_desc') items.sort((a,b)=>b.unit_price-a.unit_price);
-  if (v==='qty_desc')   items.sort((a,b)=>b.quantity-a.quantity);
-  renderItems(items);
-}
-
-// ── 탭 전환 ──────────────────────────────────────────
-function switchView(id, btn) {
-  document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('seller-grid').style.display = id==='sellers'?'grid':'none';
-  document.getElementById('item-grid').style.display   = id==='items'?'grid':'none';
-}
-
-// ── 판매자 상세 패널 (market 내부에서 표시) ──────────
-function visitSeller(guid) {
-  const seller = _allSellers.find(s => s.guid === guid);
-  if (!seller) return;
-  const p    = seller.profile || {};
-  const name = p.name || guid.slice(0,8)+'…';
-  const etab = {person:'개인',org:'기관',thing:'사물'};
-
-  // 헤더
-  document.getElementById('sp-avatar').textContent = name.slice(0,1).toUpperCase();
-  document.getElementById('sp-name').textContent   = name;
-  document.getElementById('sp-type').textContent   = (etab[p.entity_type]||'판매자') + (p.extra?.public?.업종 ? ' · '+p.extra.public.업종 : '');
-
-  // 메타
-  const meta = [];
-  if (p.address) meta.push('📍 '+p.address);
-  if (p.phone)   meta.push('📞 '+p.phone);
-  document.getElementById('sp-meta').innerHTML = meta.map(m=>`<span>${_e(m)}</span>`).join('');
-
-  // 공개 정보
-  const pub = p.extra?.public || {};
-  const pubRows = Object.entries(pub).filter(([k])=>k!=='이름');
-  document.getElementById('sp-pub-info').innerHTML = pubRows.length
-    ? pubRows.map(([k,v])=>`<div class="sp-pub-row"><span class="sp-pub-key">${_e(k)}</span><span class="sp-pub-val">${_e(v)}</span></div>`).join('')
-    : '<div style="color:var(--hint);font-size:12px">공개 정보가 없습니다.</div>';
-
-  // 재고 목록
-  const tbody = document.getElementById('sp-inv-tbody');
-  if (!seller.items.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--hint);padding:20px">재고가 없습니다.</td></tr>';
-  } else {
-    tbody.innerHTML = seller.items.map(i => {
-      const soldOut = i.quantity <= 0;
-      return `<tr>
-        <td>
-          <div class="sp-name-cell">${_e(i.name)}</div>
-          <span class="sp-cat-pill">${_e(i.category||'기타')}</span>
-          ${i.description?`<div style="font-size:11px;color:var(--hint);margin-top:2px">${_e(i.description)}</div>`:''}
-        </td>
-        <td style="text-align:right"><span class="sp-price">₮${fmtN(i.unit_price)}</span></td>
-        <td style="text-align:right"><span class="sp-qty">${fmtN(i.quantity)}<br><span style="font-size:10px">${_e(i.unit||'개')}</span></span></td>
-        <td><span class="sp-delivery">${_e(i.delivery||'—')}</span></td>
-        <td><button class="sp-buy-btn" ${soldOut?'disabled':''}
-          onclick="openModal(${JSON.stringify(i).replace(/"/g,'&quot;')}, '${_e(name)}')">
-          ${soldOut?'품절':'구매'}
-        </button></td>
-      </tr>`;
-    }).join('');
-  }
-
-  document.getElementById('sp-bg').classList.add('open');
-}
-
-function closeSellerPanel(e) {
-  if (e && e.target !== document.getElementById('sp-bg')) return;
-  document.getElementById('sp-bg').classList.remove('open');
-}
-
-function visitProfile(guid) {
-  // 공개 프로필만: user_template에서 is_public=true인 공개 정보만 표시됨
-  // token 없이 접속 → 본인 아님 → 공개 정보만 렌더
-  window.open(`https://gopang.net/user_template.html?guid=${guid}`, '_blank');
-}
-
-// ── 구매 모달 ────────────────────────────────────────
-function openModal(item, sellerName) {
-  _buyItem = item;
-  document.getElementById('m-item-id').value      = item.id;
-  document.getElementById('m-seller-guid').value  = item.owner_guid;
-  document.getElementById('m-item-name').textContent   = item.name;
-  document.getElementById('m-seller-name').textContent = sellerName;
-  document.getElementById('m-qty').value = 1;
-  document.getElementById('m-purpose').value = '';
-  document.getElementById('m-msg').textContent = '';
-  document.getElementById('m-session-warn').style.display = _viewerGuid ? 'none' : '';
-  updateModalTotal();
-  document.getElementById('modal-bg').classList.add('open');
-}
-function closeModal() { document.getElementById('modal-bg').classList.remove('open'); _buyItem=null; }
-
-function updateModalTotal() {
-  if (!_buyItem) return;
-  const qty     = Math.max(0, parseFloat(document.getElementById('m-qty').value)||0);
-  const total   = qty * _buyItem.unit_price;
-  const fee     = Math.round(total * GDC_FEE * 10000) / 10000;
-  const net     = total - fee;
-  document.getElementById('m-qty-display').textContent = qty;
-  document.getElementById('m-unit-price').textContent  = '₮'+fmtN(_buyItem.unit_price);
-  document.getElementById('m-fee').textContent         = '₮'+fmtN(fee);
-  document.getElementById('m-total').textContent       = '₮'+fmtN(total);
-  document.getElementById('m-net').textContent         = '₮'+fmtN(net);
-}
-
-// ── 구매 확정 (user_template.html의 confirmPurchase 로직 이식) ──
-async function confirmBuy() {
-  if (!_buyItem) return;
-  const qty     = parseFloat(document.getElementById('m-qty').value)||0;
-  const purpose = document.getElementById('m-purpose').value.trim();
-  const msg     = document.getElementById('m-msg');
-  const btn     = document.getElementById('m-confirm-btn');
-
-  if (!_viewerGuid) { msg.textContent='로그인이 필요합니다. 고팡 앱에서 접속하세요.'; return; }
-  if (qty <= 0)     { msg.textContent='수량을 1 이상 입력하세요.'; return; }
-  if (qty > _buyItem.quantity) { msg.textContent=`재고 부족 (현재: ${fmtN(_buyItem.quantity)})`; return; }
-
-  btn.disabled=true; btn.textContent='처리 중…';
-
-  const total     = qty * _buyItem.unit_price;
-  const fee       = Math.round(total * GDC_FEE * 10000) / 10000;
-  const sellerNet = total - fee;
-  const txId      = crypto.randomUUID();
-  const now       = new Date().toISOString();
-  const sellerGuid= _buyItem.owner_guid;
-
-  try {
-    // 재고 차감
-    await fetch(`${SUPA_URL}/rest/v1/inventory?id=eq.${_buyItem.id}`,{
-      method:'PATCH',headers:{...HDR,'Content-Type':'application/json'},
-      body:JSON.stringify({quantity:_buyItem.quantity-qty})
-    });
-    // 구매자 PDV
-    await fetch(`${SUPA_URL}/rest/v1/pdv_log`,{
-      method:'POST',headers:{...HDR,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({
-        user_guid:_viewerGuid, service_id:'gopang-market', record_type:'purchase',
-        summary:`${_buyItem.name} ${fmtN(qty)}${_buyItem.unit||'개'} 구매`,
-        what:_buyItem.name, how:_buyItem.delivery||'직접 거래', why:purpose||'구매',
-        category:'시장',
-        extra:{tx_id:txId,item_id:_buyItem.id,qty,unit_price:_buyItem.unit_price,total,seller_guid:sellerGuid,currency:'GDC'}
-      })
-    });
-    // 판매자 PDV
-    await fetch(`${SUPA_URL}/rest/v1/pdv_log`,{
-      method:'POST',headers:{...HDR,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({
-        user_guid:sellerGuid, service_id:'gopang-market', record_type:'sale',
-        summary:`${_buyItem.name} ${fmtN(qty)}${_buyItem.unit||'개'} 판매`,
-        what:_buyItem.name, how:_buyItem.delivery||'직접 거래', why:'판매', category:'시장',
-        extra:{tx_id:txId,item_id:_buyItem.id,qty,unit_price:_buyItem.unit_price,total,fee,seller_net:sellerNet,buyer_guid:_viewerGuid,currency:'GDC'}
-      })
-    });
-    // fs_ledger — 구매자 debit
-    await fetch(`${SUPA_URL}/rest/v1/fs_ledger`,{
-      method:'POST',headers:{...HDR,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({tx_id:txId,guid:_viewerGuid,counterpart:sellerGuid,direction:'debit',amount:total,item_name:_buyItem.name,item_id:_buyItem.id,quantity:qty,fs_account:'cash',memo:(purpose||_buyItem.name)+' 구매',tx_at:now})
-    });
-    // fs_ledger — 판매자 credit (sellerNet)
-    await fetch(`${SUPA_URL}/rest/v1/fs_ledger`,{
-      method:'POST',headers:{...HDR,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({tx_id:txId,guid:sellerGuid,counterpart:_viewerGuid,direction:'credit',amount:sellerNet,item_name:_buyItem.name,item_id:_buyItem.id,quantity:qty,fs_account:'revenue',memo:_buyItem.name+' 판매',tx_at:now})
-    });
-    // fs_ledger — 판매자 fee debit
-    await fetch(`${SUPA_URL}/rest/v1/fs_ledger`,{
-      method:'POST',headers:{...HDR,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({tx_id:txId,guid:sellerGuid,counterpart:'gopang-platform',direction:'debit',amount:fee,item_name:'GDC 거래 수수료',quantity:1,fs_account:'platform_fee',memo:`GDC 수수료 0.20% — tx:${txId.slice(0,8)}`,tx_at:now})
-    });
-    // 재무제표 반영
-    await _updateFS(_viewerGuid, 'bs-cash', -total);
-    await _updateFS(sellerGuid, 'bs-cash', sellerNet);
-    await _updateFS(sellerGuid, 'pl-revenue', total);
-    await _updateFS(sellerGuid, 'pl-opex', fee);
-
-    closeModal();
-    // 구매 완료 후 리뷰 모달 오픈
-    _lastTxId = txId;
-    openReviewModal(txId, sellerGuid, _buyItem.id, _buyItem.name, total);
-    // 재고 수량 UI 갱신
-    _buyItem.quantity -= qty;
-    renderItems(_allItems);
-
-  } catch(e) {
-    msg.textContent = '거래 실패: '+e.message;
-  } finally {
-    btn.disabled=false; btn.textContent='구매 확정';
-  }
-}
-
-// ── 리뷰 모달 ────────────────────────────────────────
-function openReviewModal(txId, sellerGuid, itemId, itemName, amount) {
-  document.getElementById('rv-tx-id').value      = txId;
-  document.getElementById('rv-seller-guid').value= sellerGuid;
-  document.getElementById('rv-item-id').value    = itemId || '';
-  document.getElementById('rv-item-name').value  = itemName;
-  document.getElementById('rv-amount').value     = amount;
-  document.getElementById('rv-comment').value    = '';
-  document.getElementById('rv-msg').textContent  = '';
-  document.getElementById('rv-sub').textContent  = `"${itemName}" 구매 완료 — 거래액 ₮${fmtN(amount)}`;
-
-  // 가중치 안내 계산
-  const maxVol = Math.max(...Object.values(_ratingMap).map(r=>r.total_volume||0), amount, 1);
-  const wAmt   = Math.log10(amount+1) / Math.log10(maxVol+1);
-  document.getElementById('rv-weight-info').innerHTML =
-    `이 리뷰의 <strong>금액 가중치: ${(wAmt*100).toFixed(0)}%</strong><br>
-     거래 금액이 클수록 평점에 더 큰 영향을 미칩니다.<br>
-     동일 판매자에게 반복 리뷰 시 영향력이 점차 감소합니다.`;
-
-  _reviewStar = 0;
-  setReviewStar(0);
-  document.getElementById('review-modal-bg').classList.add('open');
-}
-
-function closeReviewModal() {
-  document.getElementById('review-modal-bg').classList.remove('open');
-  _reviewStar = 0;
-  // 재고 수량 UI 갱신 (리뷰 닫을 때 처리)
-  if (_buyItem) { _buyItem.quantity -= parseFloat(document.getElementById('m-qty')?.value||1); }
-  renderItems(_allItems);
-}
-
-function setReviewStar(n) {
-  _reviewStar = n;
-  document.querySelectorAll('.star-btn').forEach(b => {
-    b.classList.toggle('on', parseInt(b.dataset.v) <= n);
-  });
-}
-
-async function submitReview() {
-  if (_reviewStar < 1) { document.getElementById('rv-msg').textContent='별점을 선택해 주세요.'; return; }
-  const btn     = document.getElementById('rv-submit-btn');
-  const msg     = document.getElementById('rv-msg');
-  const txId    = document.getElementById('rv-tx-id').value;
-  const seller  = document.getElementById('rv-seller-guid').value;
-  const itemId  = document.getElementById('rv-item-id').value || null;
-  const amount  = parseFloat(document.getElementById('rv-amount').value)||0;
-  const comment = document.getElementById('rv-comment').value.trim();
-
-  if (!_viewerGuid) { msg.textContent='로그인이 필요합니다.'; return; }
-
-  btn.disabled=true; btn.textContent='등록 중…';
-  try {
-    const r = await fetch(`${SUPA_URL}/rest/v1/reviews`, {
-      method:'POST',
-      headers:{...HDR,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body: JSON.stringify({
-        tx_id:       txId,
-        seller_guid: seller,
-        buyer_guid:  _viewerGuid,
-        item_id:     itemId,
-        item_name:   document.getElementById('rv-item-name').value,
-        stars:       _reviewStar,
-        comment:     comment || null,
-        tx_amount:   amount,
-        // buyer_review_seq는 DB 트리거가 자동 설정
-      }),
-    });
-    if (!r.ok) {
-      const txt = await r.text();
-      // 중복 리뷰 (tx_id UNIQUE 위반) 처리
-      if (txt.includes('duplicate') || txt.includes('unique')) {
-        msg.textContent='이 거래에 대한 리뷰가 이미 등록되었습니다.';
-      } else {
-        throw new Error(txt);
-      }
-      return;
-    }
-    // 평점 맵 갱신 (화면 즉시 반영)
-    try {
-      const rtRes = await fetch(
-        `${SUPA_URL}/rest/v1/seller_ratings?seller_guid=eq.${seller}&select=*&limit=1`,
-        { headers: HDR }
-      );
-      const [rt] = await rtRes.json();
-      if (rt) _ratingMap[seller] = rt;
-    } catch(e) {}
-    renderSellers(_allSellers);
-    document.getElementById('review-modal-bg').classList.remove('open');
-    alert(`✓ 후기가 등록되었습니다. 감사합니다!\n별점: ${'★'.repeat(_reviewStar)}${'☆'.repeat(5-_reviewStar)}`);
-  } catch(e) {
-    msg.textContent = '등록 실패: '+e.message;
-  } finally {
-    btn.disabled=false; btn.textContent='후기 등록';
-  }
-}
-
-async function _updateFS(guid, field, delta) {
-  try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/user_profiles?guid=eq.${guid}&select=extra&limit=1`,{headers:HDR});
-    const [row] = await res.json();
-    const extra = row?.extra || {};
-    const sec   = field.startsWith('bs-') ? 'bs' : 'pl';
-    extra.fs = extra.fs || {};
-    extra.fs[sec] = extra.fs[sec] || {};
-    extra.fs[sec][field] = String((parseFloat(extra.fs[sec][field]||'0')||0) + delta);
-    await fetch(`${SUPA_URL}/rest/v1/user_profiles?guid=eq.${guid}`,{
-      method:'PATCH',headers:{...HDR,'Content-Type':'application/json'},
-      body:JSON.stringify({extra})
-    });
-  } catch(e) { console.warn('[FS]',field,e.message); }
-}
-
-// ── 유틸 ─────────────────────────────────────────────
-function _e(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function fmtN(n) { return (+(n||0)).toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:4}); }
-
-function setLoading(on) {
-  document.getElementById('btn-search').disabled     = on;
-  document.getElementById('search-spinner').style.display = on?'':'none';
-  document.getElementById('btn-search-txt').textContent  = on?'검색 중…':'🔍 검색';
-}
-
-// ── 초기화 ────────────────────────────────────────────
-_resolveViewer();
-
-// URL에 q 파라미터 있으면 자동 검색
-const preQ = params.get('q');
-if (preQ) {
-  document.getElementById('search-input').value = preQ;
-  runSearch();
-}
-</script>
 <!-- 리뷰 모달 -->
-<div class="review-modal-bg" id="review-modal-bg">
-  <div class="review-modal">
-    <div class="review-modal-title">⭐ 구매 후기를 남겨주세요</div>
-    <div class="review-modal-sub" id="rv-sub">판매자에게 소중한 피드백이 됩니다.</div>
-    <input type="hidden" id="rv-tx-id">
-    <input type="hidden" id="rv-seller-guid">
-    <input type="hidden" id="rv-item-id">
-    <input type="hidden" id="rv-item-name">
-    <input type="hidden" id="rv-amount">
-    <div class="stars-input" id="rv-stars">
+<div id="review-modal-bg" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--sur);border-radius:12px;padding:28px 24px;width:min(360px,100%);box-shadow:0 20px 60px rgba(0,0,0,.18);text-align:center">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">구매 후기</div>
+    <div id="rv-sub" style="font-size:12px;color:var(--hint);margin-bottom:20px"></div>
+    <div id="rv-stars" style="display:flex;justify-content:center;gap:8px;margin-bottom:8px">
       <button class="star-btn" data-v="1" onclick="setReviewStar(1)">★</button>
       <button class="star-btn" data-v="2" onclick="setReviewStar(2)">★</button>
       <button class="star-btn" data-v="3" onclick="setReviewStar(3)">★</button>
       <button class="star-btn" data-v="4" onclick="setReviewStar(4)">★</button>
       <button class="star-btn" data-v="5" onclick="setReviewStar(5)">★</button>
     </div>
-    <textarea class="review-textarea" id="rv-comment" rows="3" placeholder="이 판매자와의 거래는 어떠셨나요? (선택)"></textarea>
-    <div class="review-weight-info" id="rv-weight-info"></div>
-    <div class="review-actions">
-      <button class="btn-skip" onclick="closeReviewModal()">나중에</button>
-      <button class="btn-review" id="rv-submit-btn" onclick="submitReview()">후기 등록</button>
+    <div id="rv-star-label" style="font-size:12px;color:var(--hint);margin-bottom:14px;min-height:16px"></div>
+    <textarea id="rv-comment" rows="2" placeholder="한 줄 후기 (선택사항)"
+      style="width:100%;padding:9px 12px;border:1px solid var(--bdr);border-radius:var(--r);font-family:var(--font);font-size:13px;color:var(--txt);resize:none;outline:none;margin-bottom:8px;text-align:left"></textarea>
+    <div style="font-size:11px;color:var(--grn);background:var(--gbg);border-radius:4px;padding:6px 10px;margin-bottom:16px;text-align:left">
+      ✓ 등록 시 <strong>₮10 GDC</strong> 즉시 지급 · 도움됨 10개 시 <strong>₮50 GDC</strong> 추가
     </div>
-    <div class="review-msg" id="rv-msg"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeReviewModal()" style="flex:1;background:none;border:1px solid var(--bdr);border-radius:var(--r);padding:10px;font-size:13px;cursor:pointer;color:var(--hint)">나중에</button>
+      <button id="rv-submit-btn" onclick="submitReview()" style="flex:2;background:var(--pri);color:#fff;border:none;border-radius:var(--r);padding:10px;font-size:14px;font-weight:700;cursor:pointer">등록하기</button>
+    </div>
+    <div id="rv-msg" style="font-size:12px;color:var(--red);margin-top:8px;min-height:14px"></div>
   </div>
 </div>
 
+<!-- JS 로드 순서: config → auth → search → seller → purchase → review -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/search.js"></script>
+<script src="js/seller.js"></script>
+<script src="js/purchase.js"></script>
+<script src="js/review.js"></script>
+<script>
+// ── 앱 초기화 ─────────────────────────────────────────
+(async () => {
+  await initAuth();
+  const preQ = new URLSearchParams(location.search).get('q');
+  if (preQ) {
+    document.getElementById('search-input').value = preQ;
+    runSearch();
+  }
+})();
+</script>
 </body>
 </html>
