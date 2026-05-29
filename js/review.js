@@ -71,8 +71,8 @@ async function submitReview() {
       throw new Error(txt);
     }
 
-    // ── GDC 보상 ₮10 지급 ────────────────────────────
-    await _payReviewReward(_viewerGuid, REVIEW_REWARD_BASE, '리뷰 작성 보상');
+    // ── GDC 보상 ₮10 지급 (idempotency: tx_id 기준 중복 방지) ──
+    await _payReviewReward(_viewerGuid, REVIEW_REWARD_BASE, '리뷰 작성 보상', _reviewTxId);
 
     // 판매자 평점 캐시 갱신 (화면 즉시 반영)
     await _refreshSellerRating(_reviewSeller);
@@ -184,8 +184,8 @@ async function voteReview(reviewId, isHelpful) {
 
     // 도움됨 달성 보상
     if (isHelpful) {
-      if (newCount === 10)  await _payReviewReward(rv.buyer_guid, REVIEW_REWARD_10,  '리뷰 도움됨 10개 달성');
-      if (newCount === 100) await _payReviewReward(rv.buyer_guid, REVIEW_REWARD_100, '리뷰 도움됨 100개 달성');
+      if (newCount === 10)  await _payReviewReward(rv.buyer_guid, REVIEW_REWARD_10,  '리뷰 도움됨 10개 달성',  `helpful10-${reviewId}`);
+      if (newCount === 100) await _payReviewReward(rv.buyer_guid, REVIEW_REWARD_100, '리뷰 도움됨 100개 달성', `helpful100-${reviewId}`);
     }
 
     // UI 즉시 갱신
@@ -204,10 +204,25 @@ async function voteReview(reviewId, isHelpful) {
 }
 
 // ── GDC 보상 지급 ─────────────────────────────────────
-async function _payReviewReward(guid, amount, memo) {
+async function _payReviewReward(guid, amount, memo, idempotencyKey) {
   try {
-    const txId = crypto.randomUUID();
-    // fs_ledger에 credit 기록
+    // ── 중복 지급 방지: idempotencyKey 기준으로 기존 지급 여부 확인 ──
+    if (idempotencyKey) {
+      const chkRes = await fetch(
+        `${SUPA_URL}/rest/v1/fs_ledger?guid=eq.${guid}&fs_account=eq.review_reward&memo=like.*${encodeURIComponent(idempotencyKey)}*&select=tx_id&limit=1`,
+        { headers: HDR }
+      );
+      const existing = await chkRes.json();
+      if (Array.isArray(existing) && existing.length > 0) {
+        console.info('[Reward] 이미 지급된 보상 — 건너뜀:', idempotencyKey);
+        return;
+      }
+    }
+
+    const txId = idempotencyKey
+      ? await _uuidFromString(idempotencyKey)  // 동일 키 → 동일 UUID (멱등성)
+      : crypto.randomUUID();
+
     await fetch(`${SUPA_URL}/rest/v1/fs_ledger`, {
       method: 'POST',
       headers: { ...HDR, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
@@ -215,13 +230,19 @@ async function _payReviewReward(guid, amount, memo) {
         tx_id: txId, guid, counterpart: 'gopang-platform',
         direction: 'credit', amount,
         item_name: memo, fs_account: 'review_reward',
-        memo: `${memo} — ₮${fmtN(amount)} GDC`,
+        memo: `${memo} — ₮${fmtN(amount)} GDC [key:${idempotencyKey||'none'}]`,
         tx_at: new Date().toISOString()
       })
     });
-    // user_profiles.extra.fs.bs.bs-cash 증가
     await _updateFS(guid, 'bs-cash', amount);
   } catch(e) { console.warn('[Reward]', e.message); }
+}
+
+// ── 문자열에서 결정론적 UUID 생성 (SHA-256 기반) ──────────────
+async function _uuidFromString(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-${(parseInt(hex[16],16)&0x3|0x8).toString(16)}${hex.slice(17,20)}-${hex.slice(20,32)}`;
 }
 
 // ── 판매자 평점 캐시 갱신 ────────────────────────────

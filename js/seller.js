@@ -162,7 +162,7 @@ function openSellerPanel(guid) {
 }
 
 function closeSellerPanel(e) {
-  if (e && e.target !== document.getElementById('sp-bg')) return;
+  if (e && e.target.closest('.seller-panel')) return;
   document.getElementById('sp-bg').classList.remove('open');
 }
 

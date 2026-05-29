@@ -34,31 +34,43 @@ async function runSearch() {
       `ID:${i.id}|품목:${i.name}|분류:${i.category||'기타'}|단가:₮${i.unit_price}|재고:${i.quantity}${i.unit||'개'}|판매자:${profileMap[i.owner_guid]?.name||i.owner_guid.slice(0,8)}`
     ).join('\n');
 
+    // DS_ENDPOINT = '/api/ai-search' (서버 프록시 — API 키는 서버에서 주입)
     const aiRes = await fetch(DS_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DS_KEY },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content:
-          `당신은 고팡 마켓 AI 검색 엔진입니다.\n사용자 요청: "${q}"\n\n재고 목록:\n${catalogText}\n\n관련 품목 ID를 관련도 순으로 최대 20개 추출하세요.\n응답은 반드시 아래 JSON만 출력하세요:\n{"analysis":"분석 요약(2~3문장)","matched_ids":["ID1","ID2",...]}`
-        }],
-        max_tokens: 600, temperature: 0.1
+        query:   q,
+        catalog: catalogText   // 서버에서 DeepSeek 호출 후 동일 JSON 구조 반환
       })
     });
     const aiData = await aiRes.json();
     let aiResult = {};
+    let aiParseOk = false;
     try {
-      aiResult = JSON.parse(aiData.choices?.[0]?.message?.content?.replace(/```json|```/g,'').trim() || '{}');
-    } catch(e) {}
+      const raw = aiData.choices?.[0]?.message?.content?.replace(/```json|```/g,'').trim() || '';
+      if (raw) { aiResult = JSON.parse(raw); aiParseOk = true; }
+    } catch(e) { console.warn('[AI] 파싱 실패:', e.message); }
+
+    // AI 파싱 실패 또는 매칭 결과 없음 → 빈 결과 반환 (전체 노출 방지)
+    const matchedIds = Array.isArray(aiResult.matched_ids) && aiResult.matched_ids.length > 0
+      ? aiResult.matched_ids : null;
+
+    if (!aiParseOk || !matchedIds) {
+      document.getElementById('ai-banner-text').textContent =
+        aiParseOk
+          ? '검색 결과가 없습니다. 다른 키워드로 시도해 보세요.'
+          : 'AI 응답을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      document.getElementById('ai-banner').style.display = '';
+      document.getElementById('filter-bar').style.display = 'none';
+      document.getElementById('view-tabs').style.display  = 'none';
+      setLoading(false);
+      return;
+    }
 
     // 결과 필터링 & 정렬
-    const matchedSet = new Set(aiResult.matched_ids || []);
-    let matched = matchedSet.size > 0
-      ? inventory.filter(i => matchedSet.has(i.id))
-      : inventory;
-    if (matchedSet.size > 0) {
-      matched.sort((a,b) => aiResult.matched_ids.indexOf(a.id) - aiResult.matched_ids.indexOf(b.id));
-    }
+    const matchedSet = new Set(matchedIds);
+    let matched = inventory.filter(i => matchedSet.has(i.id));
+    matched.sort((a,b) => matchedIds.indexOf(a.id) - matchedIds.indexOf(b.id));
     _allItems = matched.map(i => ({ ...i, _profile: profileMap[i.owner_guid] }));
 
     // 판매자별 집계
