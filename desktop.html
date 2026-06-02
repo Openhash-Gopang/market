@@ -967,22 +967,55 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeWebApp(); });
 
 /* ── gopang-auth-guide 준수: _onGopangAuth 콜백 ── */
-window._onGopangAuth = async function(user) {
-  if (!user) return;
-  const badge = document.createElement('span');
-  badge.style.cssText = `
-    font-family:'DM Mono',monospace;font-size:11px;
-    padding:2px 8px;border-radius:99px;margin-left:8px;
-    background:#ecfdf5;color:#1a9e6a;border:1px solid #a7f3d0;`;
-  badge.textContent = user.level;
-  document.querySelector('.nav-left')?.appendChild(badge);
+window._marketUser = null;
 
-  // 판매자 등록 폼 인증 상태 갱신
-  const dot = document.getElementById('seller-auth-dot');
-  const status = document.getElementById('seller-auth-status');
-  if (dot) dot.style.background = '#3ecf8e';
-  if (status) status.textContent = user.level + ' · ' + (user.ipv6||'').slice(0,20) + '…';
-  updateSellerBtn();
+async function _sendPdvReport(user, action) {
+  try {
+    await fetch('https://gopang-proxy.tensor-city.workers.dev/pdv/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        report: {
+          svc:   'market',
+          type:  'action',
+          who:   { ipv6: user.ipv6, role: 'user' },
+          when:  { period_start: new Date().toISOString(), period_end: new Date().toISOString() },
+          where: { svc_url: location.href },
+          what:  { summary: action.summary },
+          how:   { method: 'subsystem-auth', auth_level: user.level },
+          why:   { goal: action.goal },
+        }
+      })
+    });
+    console.log('[PDV] 전송 완료:', action.summary);
+  } catch(e) { console.warn('[PDV] 전송 실패:', e.message); }
+}
+
+window._onGopangAuth = async function(user) {
+  console.log('[Auth] _onGopangAuth 호출됨:', user);
+  if (!user) { console.warn('[Auth] user가 null/undefined'); return; }
+
+  // 최우선 저장 — DOM 작업 전에 먼저 설정
+  window._marketUser = user;
+
+  try {
+    const badge = document.createElement('span');
+    badge.style.cssText = `
+      font-family:'DM Mono',monospace;font-size:11px;
+      padding:2px 8px;border-radius:99px;margin-left:8px;
+      background:#ecfdf5;color:#1a9e6a;border:1px solid #a7f3d0;`;
+    badge.textContent = user.level;
+    document.querySelector('.nav-left')?.appendChild(badge);
+
+    // 판매자 등록 폼 인증 상태 갱신
+    const dot = document.getElementById('seller-auth-dot');
+    const status = document.getElementById('seller-auth-status');
+    if (dot) dot.style.background = '#3ecf8e';
+    if (status) status.textContent = user.level + ' · ' + (user.ipv6||'').slice(0,20) + '…';
+    updateSellerBtn();
+  } catch(e) {
+    console.warn('[Auth] DOM 업데이트 오류:', e.message);
+  }
 };
 
 /* ── 판매자 등록 ── */
@@ -1105,7 +1138,13 @@ async function generateSellerSite() {
     });
 
     const data = await res.json();
-    const html = data.choices?.[0]?.message?.content || '';
+    let html = data.choices?.[0]?.message?.content || '';
+
+    // 마크다운 코드 블록 제거 (```html ... ``` 또는 ``` ... ```)
+    html = html.trim();
+    if (html.startsWith('```')) {
+      html = html.replace(/^```(?:html)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    }
 
     if (!html) throw new Error('응답이 비어 있습니다.');
 
@@ -1167,6 +1206,17 @@ async function generateSellerSite() {
 
     // 생성된 HTML 저장
     window._generatedSellerHTML = html;
+
+    // PDV 기록
+    const pdvUser = window._marketUser || window._user || null;
+    if (pdvUser?.ipv6) {
+      _sendPdvReport(pdvUser, {
+        summary: `판매자 사이트 생성: ${input.slice(0, 80)}`,
+        goal: 'K-Market 판매자 웹사이트 생성',
+      });
+    } else {
+      console.warn('[PDV] 사용자 정보 없음 — _marketUser:', window._marketUser, 'window._user:', window._user);
+    }
 
   } catch(e) {
     result.innerHTML = `
