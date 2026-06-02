@@ -1359,17 +1359,41 @@ async function generateSellerSite() {
 
     if (!rawData || !rawData.includes('SELLER_DATA')) throw new Error('응답이 올바르지 않습니다.');
 
-    // 템플릿 fetch 후 SELLER_DATA 교체하여 완성 HTML 생성
+    // ── 템플릿 fetch ──────────────────────────────────
     const templateRes = await fetch('/kmarket_seller_template.html');
     if (!templateRes.ok) throw new Error('템플릿 파일을 불러올 수 없습니다. (kmarket_seller_template.html)');
     let templateHTML = await templateRes.text();
 
-    // 템플릿의 기본 SELLER_DATA를 DeepSeek이 생성한 데이터로 교체
-    const dataStart = templateHTML.indexOf('const SELLER_DATA = {');
-    const dataEnd   = templateHTML.indexOf('\n};', dataStart) + 3;
-    if (dataStart === -1) throw new Error('템플릿에서 SELLER_DATA를 찾을 수 없습니다.');
+    // ── SELLER_DATA 교체 ──────────────────────────────
+    const sellerStart = rawData.indexOf('const SELLER_DATA = {');
+    const sellerEnd   = rawData.indexOf('\n};', sellerStart) + 3;
+    const sellerBlock = rawData.slice(sellerStart, sellerEnd);
 
-    const finalHTML = templateHTML.slice(0, dataStart) + rawData + templateHTML.slice(dataEnd);
+    const tSellerStart = templateHTML.indexOf('const SELLER_DATA = {');
+    const tSellerEnd   = templateHTML.indexOf('\n};', tSellerStart) + 3;
+    if (tSellerStart === -1) throw new Error('템플릿에서 SELLER_DATA를 찾을 수 없습니다.');
+    templateHTML = templateHTML.slice(0, tSellerStart) + sellerBlock + templateHTML.slice(tSellerEnd);
+
+    // ── ADMIN_DATA 교체 (있을 경우) ───────────────────
+    if (rawData.includes('const ADMIN_DATA = {')) {
+      // 관리자 대시보드 파일도 fetch하여 ADMIN_DATA 교체
+      const adminRes = await fetch('/kmarket_admin_dashboard.html');
+      if (adminRes.ok) {
+        let adminHTML = await adminRes.text();
+        const adminStart = rawData.indexOf('const ADMIN_DATA = {');
+        const adminEnd   = rawData.indexOf('\n};', adminStart) + 3;
+        const adminBlock = rawData.slice(adminStart, adminEnd);
+
+        const tAdminStart = adminHTML.indexOf('const ADMIN_DATA = {');
+        const tAdminEnd   = adminHTML.indexOf('\n};', tAdminStart) + 3;
+        if (tAdminStart !== -1) {
+          adminHTML = adminHTML.slice(0, tAdminStart) + adminBlock + adminHTML.slice(tAdminEnd);
+          window._generatedAdminHTML = adminHTML;
+        }
+      }
+    }
+
+    const finalHTML = templateHTML;
 
     // 결과 표시
     result.innerHTML = `
@@ -1386,7 +1410,12 @@ async function generateSellerSite() {
             </button>
             <button onclick="downloadSellerSite()" style="padding:5px 12px;border-radius:var(--radius);border:none;
               background:var(--brand);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
-              HTML 다운로드
+              판매자 사이트 다운로드
+            </button>
+            <button onclick="downloadAdminDashboard()" style="padding:5px 12px;border-radius:var(--radius);border:1px solid var(--amber);
+              background:#fffbeb;color:#d97706;font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;"
+              id="btn-download-admin">
+              관리자 대시보드 다운로드
             </button>
           </div>
         </div>
@@ -1430,6 +1459,16 @@ async function generateSellerSite() {
   btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> 웹사이트 생성`;
   btn.disabled = false;
   btn.style.opacity = '1';
+}
+
+function downloadAdminDashboard() {
+  const html = window._generatedAdminHTML;
+  if (!html) { alert('관리자 대시보드가 아직 생성되지 않았습니다.'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], {type:'text/html'}));
+  a.download = 'admin_dashboard.html';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function previewSellerSite() {
