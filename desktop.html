@@ -576,7 +576,7 @@ footer {
     <li><a href="#metrics">성능</a></li>
     <li><a href="#compare">비교</a></li>
   </ul>
-  <button class="nav-cta" onclick="openWebApp()">
+  <button class="nav-cta" id="btn-open-webapp">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3a1 1 0 000 2h2.586L3.293 10.293a1 1 0 101.414 1.414L10 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1H6z"/></svg>
     웹앱 열기
   </button>
@@ -618,7 +618,7 @@ footer {
     <p class="hero-sub">AI 자율 시장 플랫폼 · v1.0</p>
     <p class="hero-tagline">세상의 모든 경제학과 경영학 지식을 갖추고, 오직 자신이 맡은 사용자의 이익을 위해 복무합니다.</p>
     <div class="hero-actions">
-      <button onclick="openWebApp()" class="btn-lg btn-green">
+      <button id="btn-open-webapp-hero" class="btn-lg btn-green">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3a1 1 0 000 2h2.586L3.293 10.293a1 1 0 101.414 1.414L10 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1H6z"/></svg>
         K-Market 웹앱 열기
       </button>
@@ -755,6 +755,114 @@ footer {
   </div>
 </section>
 
+<hr class="sep">
+
+<!-- ── SELLER REGISTRATION ── -->
+<section class="section" id="seller">
+  <div class="section-inner">
+    <div class="section-tag reveal">Seller Registration</div>
+    <h2 class="section-title reveal"><strong>판매자 등록</strong></h2>
+    <div class="section-body reveal">
+      <p>모든 사용자는 판매자로 등록할 수 있습니다.</p>
+      <ul class="overview-list" style="margin-top:14px">
+        <li>자신이 판매하는 재화와 용역의 종류와 가격을 서술형으로 입력하면, K-Market이 판매자의 웹 사이트를 작성합니다.</li>
+        <li>판매자 사이트는 판매자의 거주지 OpenHash 계층에 등록됩니다. 가령, 제주시 한림읍에 거주하는 판매자의 웹 사이트는 한림읍 OpenHash Node에 등록됩니다.</li>
+        <li>모든 웹사이트는 검색 엔진 친화적이며, 같은 양식(Template)을 공유합니다. K-Market은 고유한 검색 엔진을 제공합니다.</li>
+        <li>웹 사이트 각각은 상세한 상품 소개는 물론, 소비자 평가와 리뷰, 판매 이력과 추세 그래프, 결제 시스템 등을 제공합니다.</li>
+        <li>웹 사이트는 고객들이 AI와 대화할 수 있는 AI 상담창을 포함합니다. 고객은 상담창으로 상품에 대해 문의하거나, 주문, 결제 등 종래의 사람 직원이 수행하던 대개의 업무를 제공받습니다.</li>
+      </ul>
+    </div>
+
+    <!-- 입력 폼 -->
+    <div class="reveal" style="margin-top:40px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);">
+
+      <!-- 폼 헤더 -->
+      <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <div style="width:28px;height:28px;border-radius:6px;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;">M</div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);">업체 및 상품 소개</div>
+          <div style="font-size:12px;color:var(--text4);font-family:'DM Mono',monospace;">K-Market이 판매자 웹사이트를 자동 생성합니다</div>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text4);font-family:'DM Mono',monospace;">
+          <div id="seller-auth-dot" style="width:6px;height:6px;border-radius:50%;background:#d1d5db;"></div>
+          <span id="seller-auth-status">인증 대기 중</span>
+        </div>
+      </div>
+
+      <!-- 텍스트 입력 -->
+      <div style="padding:20px 24px;">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;font-family:'DM Mono',monospace;">업체 및 상품 설명</label>
+        <textarea id="seller-input" placeholder="예시: 저는 제주시 한림읍에서 흑돼지 농장을 운영합니다. 주요 상품은 제주 흑돼지 삼겹살(1kg, 35,000원), 목살(1kg, 30,000원), 갈비(1kg, 40,000원)입니다. 직접 사육하며 무항생제 인증을 받았습니다. 택배 배송 가능하며, 제주 현지 픽업 시 10% 할인됩니다..."
+          style="width:100%;min-height:200px;border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;
+            font-family:'Noto Sans KR',sans-serif;font-size:14px;color:var(--text);line-height:1.75;
+            background:var(--bg-subtle);resize:vertical;outline:none;transition:border-color .15s;"
+          onfocus="this.style.borderColor='var(--brand)';this.style.background='#fff'"
+          onblur="this.style.borderColor='var(--border)';this.style.background='var(--bg-subtle)'"
+          oninput="updateSellerBtn()"></textarea>
+
+        <!-- 첨부 파일 미리보기 -->
+        <div id="attach-preview" style="display:none;margin-top:10px;padding:10px 14px;background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius);display:none;align-items:center;gap:10px;">
+          <span style="font-size:18px;">📎</span>
+          <span id="attach-name" style="font-size:13px;color:var(--text2);flex:1;"></span>
+          <button onclick="removeAttachment()" style="background:none;border:none;cursor:pointer;color:var(--text4);font-size:16px;padding:0 4px;">&times;</button>
+        </div>
+
+        <!-- 녹음 상태 표시 -->
+        <div id="mic-status" style="display:none;margin-top:10px;padding:8px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);display:none;align-items:center;gap:8px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;animation:blink 1s infinite;"></div>
+          <span style="font-size:13px;color:#dc2626;font-weight:500;">음성 인식 중… 말씀하세요</span>
+          <button onclick="stopMic()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:12px;color:#dc2626;font-weight:600;">중지</button>
+        </div>
+
+        <!-- 액션 바 -->
+        <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+          <!-- 마이크 버튼 -->
+          <button id="mic-btn" onclick="toggleMicSeller()" title="음성 입력"
+            style="width:36px;height:36px;border-radius:var(--radius);border:1px solid var(--border);
+              background:#fff;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;
+              transition:all .15s;flex-shrink:0;"
+            onmouseover="this.style.borderColor='var(--brand)';this.style.color='var(--brand)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+
+          <!-- 파일 첨부 버튼 -->
+          <button onclick="document.getElementById('seller-file').click()" title="파일 첨부"
+            style="width:36px;height:36px;border-radius:var(--radius);border:1px solid var(--border);
+              background:#fff;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;
+              transition:all .15s;flex-shrink:0;"
+            onmouseover="this.style.borderColor='var(--brand)';this.style.color='var(--brand)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <input type="file" id="seller-file" style="display:none" accept="image/*,.pdf,.doc,.docx,.txt" onchange="handleSellerFile(event)">
+
+          <div style="flex:1;font-size:12px;color:var(--text4);">이미지, PDF, 문서 파일 첨부 가능</div>
+
+          <!-- 생성 버튼 -->
+          <button id="seller-submit-btn" onclick="generateSellerSite()" disabled
+            style="display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:var(--radius);
+              background:var(--brand);color:#fff;border:none;font-size:13px;font-weight:600;
+              cursor:pointer;transition:all .15s;opacity:.4;pointer-events:none;font-family:'Noto Sans KR',sans-serif;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            웹사이트 생성
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 생성 결과 영역 -->
+    <div id="seller-result" style="display:none;margin-top:24px;"></div>
+
+  </div>
+</section>
+
 <!-- ── FOOTER ── -->
 <footer>
   <div class="footer-inner">
@@ -835,6 +943,9 @@ function closeWebApp() {
   document.body.style.overflow = '';
 }
 document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('btn-open-webapp')?.addEventListener('click', openWebApp);
+  document.getElementById('btn-open-webapp-hero')?.addEventListener('click', openWebApp);
+
   const modal = document.getElementById('webapp-modal');
   if (modal) modal.addEventListener('click', e => {
     if (!document.getElementById('phone-wrapper')?.contains(e.target)) closeWebApp();
@@ -859,7 +970,6 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeWebApp(
 /* ── gopang-auth-guide 준수: _onGopangAuth 콜백 ── */
 window._onGopangAuth = async function(user) {
   if (!user) return;
-  // desktop 랜딩은 인증 없이도 열람 가능 — 인증 완료 시 nav에 레벨 표시만
   const badge = document.createElement('span');
   badge.style.cssText = `
     font-family:'DM Mono',monospace;font-size:11px;
@@ -867,7 +977,228 @@ window._onGopangAuth = async function(user) {
     background:#ecfdf5;color:#1a9e6a;border:1px solid #a7f3d0;`;
   badge.textContent = user.level;
   document.querySelector('.nav-left')?.appendChild(badge);
+
+  // 판매자 등록 폼 인증 상태 갱신
+  const dot = document.getElementById('seller-auth-dot');
+  const status = document.getElementById('seller-auth-status');
+  if (dot) dot.style.background = '#3ecf8e';
+  if (status) status.textContent = user.level + ' · ' + (user.ipv6||'').slice(0,20) + '…';
+  updateSellerBtn();
 };
+
+/* ── 판매자 등록 ── */
+let _sellerFile = null;
+let _sellerMicRecog = null;
+let _sellerMicActive = false;
+
+function updateSellerBtn() {
+  const btn  = document.getElementById('seller-submit-btn');
+  const text = document.getElementById('seller-input')?.value?.trim();
+  if (!btn) return;
+  const ok = !!text;
+  btn.disabled = !ok;
+  btn.style.opacity = ok ? '1' : '.4';
+  btn.style.pointerEvents = ok ? 'auto' : 'none';
+}
+
+function handleSellerFile(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  _sellerFile = file;
+  const preview = document.getElementById('attach-preview');
+  const name    = document.getElementById('attach-name');
+  if (preview) { preview.style.display = 'flex'; }
+  if (name)    name.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+}
+
+function removeAttachment() {
+  _sellerFile = null;
+  document.getElementById('seller-file').value = '';
+  const preview = document.getElementById('attach-preview');
+  if (preview) preview.style.display = 'none';
+}
+
+function toggleMicSeller() {
+  _sellerMicActive ? stopMic() : startMic();
+}
+
+function startMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('이 브라우저는 음성 인식을 지원하지 않습니다.'); return; }
+  _sellerMicRecog = new SR();
+  _sellerMicRecog.lang = 'ko-KR';
+  _sellerMicRecog.continuous = true;
+  _sellerMicRecog.interimResults = true;
+  _sellerMicRecog.onresult = e => {
+    let final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+    }
+    if (final) {
+      const ta = document.getElementById('seller-input');
+      ta.value += (ta.value ? ' ' : '') + final;
+      updateSellerBtn();
+    }
+  };
+  _sellerMicRecog.onend = () => { _sellerMicActive = false; updateMicUI(false); };
+  _sellerMicRecog.start();
+  _sellerMicActive = true;
+  updateMicUI(true);
+}
+
+function stopMic() {
+  _sellerMicRecog?.stop();
+  _sellerMicActive = false;
+  updateMicUI(false);
+}
+
+function updateMicUI(active) {
+  const micStatus = document.getElementById('mic-status');
+  const micBtn    = document.getElementById('mic-btn');
+  if (micStatus) micStatus.style.display = active ? 'flex' : 'none';
+  if (micBtn)    micBtn.style.background = active ? '#fef2f2' : '#fff';
+}
+
+async function generateSellerSite() {
+  const input = document.getElementById('seller-input')?.value?.trim();
+  if (!input) return;
+
+  const btn    = document.getElementById('seller-submit-btn');
+  const result = document.getElementById('seller-result');
+  btn.textContent = '생성 중…';
+  btn.disabled = true;
+  btn.style.opacity = '.6';
+
+  result.style.display = 'block';
+  result.innerHTML = `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;text-align:center;">
+      <div style="width:32px;height:32px;border:2.5px solid #e5e7eb;border-top-color:#3ecf8e;
+        border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;"></div>
+      <div style="font-size:14px;color:var(--text3);">DeepSeek v4 Pro가 판매자 사이트를 작성 중입니다…</div>
+    </div>`;
+
+  // 파일 첨부가 있으면 내용 추출 시도
+  let fileContext = '';
+  if (_sellerFile) {
+    fileContext = `\n\n[첨부 파일: ${_sellerFile.name}]`;
+    if (_sellerFile.type.startsWith('text')) {
+      try { fileContext += '\n' + await _sellerFile.text(); } catch(e) {}
+    }
+  }
+
+  const SYSTEM_PROMPT = await fetch('/prompts/SP-MKT_seller_site_v1.0.txt')
+    .then(r => r.text())
+    .catch(() => '당신은 K-Market 판매자 웹사이트 생성 AI입니다. 완전한 HTML 파일을 생성하세요.');
+
+  try {
+    const res = await fetch('https://gopang-proxy.tensor-city.workers.dev/deepseek', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `다음 정보로 판매자 웹사이트를 생성해주세요:\n\n${input}${fileContext}` }
+        ],
+        max_tokens: 4000,
+        stream: false,
+      })
+    });
+
+    const data = await res.json();
+    const html = data.choices?.[0]?.message?.content || '';
+
+    if (!html) throw new Error('응답이 비어 있습니다.');
+
+    // 결과 표시
+    result.innerHTML = `
+      <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#3ecf8e;"></div>
+            <span style="font-size:13px;font-weight:600;color:var(--text);">판매자 사이트 생성 완료</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="previewSellerSite()" style="padding:5px 12px;border-radius:var(--radius);border:1px solid var(--border);
+              background:#fff;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+              미리보기
+            </button>
+            <button onclick="downloadSellerSite()" style="padding:5px 12px;border-radius:var(--radius);border:none;
+              background:var(--brand);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+              HTML 다운로드
+            </button>
+          </div>
+        </div>
+        <div style="padding:16px 20px;background:var(--bg-subtle);">
+          <div style="font-size:12px;color:var(--text4);font-family:'DM Mono',monospace;margin-bottom:8px;">OpenHash 등록 정보</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;">
+              <div style="font-size:10px;color:var(--text4);font-family:'DM Mono',monospace;margin-bottom:2px;">판매자 IPv6</div>
+              <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;" id="result-ipv6">인증 정보 로딩 중…</div>
+            </div>
+            <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;">
+              <div style="font-size:10px;color:var(--text4);font-family:'DM Mono',monospace;margin-bottom:2px;">등록 노드</div>
+              <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">OpenHash L4 (로컬)</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:12px 20px;border-top:1px solid var(--border);background:var(--brand-bg);">
+          <div style="font-size:12px;color:var(--brand-dk);display:flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            웹사이트가 생성되었습니다. HTML을 다운로드하거나 미리보기로 확인하세요.
+          </div>
+        </div>
+      </div>`;
+
+    // IPv6 표시
+    const ipv6El = document.getElementById('result-ipv6');
+    if (ipv6El) {
+      try {
+        const raw = [navigator.userAgent, navigator.language,
+          screen.width+'x'+screen.height,
+          Intl.DateTimeFormat().resolvedOptions().timeZone].join('|');
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+        const fp  = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+        // whitepaper §7 알고리즘: fp 앞 16바이트를 IPv6 형식으로
+        const hex = fp.slice(0,32);
+        const ipv6 = hex.match(/.{4}/g).join(':');
+        ipv6El.textContent = ipv6;
+      } catch(e) { ipv6El.textContent = '계산 중 오류'; }
+    }
+
+    // 생성된 HTML 저장
+    window._generatedSellerHTML = html;
+
+  } catch(e) {
+    result.innerHTML = `
+      <div style="background:#fff;border:1px solid #fecaca;border-radius:var(--radius-lg);padding:20px 24px;color:#dc2626;font-size:13px;">
+        ⚠️ 생성 중 오류가 발생했습니다: ${e.message}
+      </div>`;
+  }
+
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> 웹사이트 생성`;
+  btn.disabled = false;
+  btn.style.opacity = '1';
+}
+
+function previewSellerSite() {
+  const html = window._generatedSellerHTML;
+  if (!html) return;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
+function downloadSellerSite() {
+  const html = window._generatedSellerHTML;
+  if (!html) return;
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'kmarket-seller-' + Date.now() + '.html';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 </script>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" stroke-width="2.5"
@@ -944,7 +1275,7 @@ window._onGopangAuth = async function(user) {
   background: rgba(0,0,0,0.55);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
@@ -956,6 +1287,7 @@ window._onGopangAuth = async function(user) {
   transition: opacity 0.25s ease;
 }
 #webapp-modal.open {
+  display: flex;
   opacity: 1;
   pointer-events: all;
 }
