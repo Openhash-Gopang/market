@@ -542,6 +542,23 @@ footer {
   .footer-inner { flex-direction: column; align-items: flex-start; }
 }
 </style>
+<script>
+function openWebApp() {
+  const modal = document.getElementById('webapp-modal');
+  if (!modal) return;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const iframe = document.getElementById('webapp-iframe');
+  if (iframe && !iframe.dataset.loaded) {
+    iframe.src = location.origin + '/webapp.html';
+    iframe.dataset.loaded = '1';
+  }
+}
+function closeWebApp() {
+  document.getElementById('webapp-modal')?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+</script>
 </head>
 <body>
 
@@ -576,7 +593,7 @@ footer {
     <li><a href="#metrics">성능</a></li>
     <li><a href="#compare">비교</a></li>
   </ul>
-  <button class="nav-cta" id="btn-open-webapp">
+  <button class="nav-cta" id="btn-open-webapp" onclick="openWebApp()">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3a1 1 0 000 2h2.586L3.293 10.293a1 1 0 101.414 1.414L10 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1H6z"/></svg>
     웹앱 열기
   </button>
@@ -618,7 +635,7 @@ footer {
     <p class="hero-sub">AI 자율 시장 플랫폼 · v1.0</p>
     <p class="hero-tagline">세상의 모든 경제학과 경영학 지식을 갖추고, 오직 자신이 맡은 사용자의 이익을 위해 복무합니다.</p>
     <div class="hero-actions">
-      <button id="btn-open-webapp-hero" class="btn-lg btn-green">
+      <button id="btn-open-webapp-hero" onclick="openWebApp()" class="btn-lg btn-green">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3a1 1 0 000 2h2.586L3.293 10.293a1 1 0 101.414 1.414L10 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1H6z"/></svg>
         K-Market 웹앱 열기
       </button>
@@ -926,26 +943,10 @@ function toggleNav(btn) {
   }
 }
 
-/* webapp modal */
-function openWebApp() {
-  const modal = document.getElementById('webapp-modal');
-  if (!modal) return;
-  modal.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  const iframe = document.getElementById('webapp-iframe');
-  if (iframe && !iframe.dataset.loaded) {
-    iframe.src = location.origin + '/webapp.html';
-    iframe.dataset.loaded = '1';
-  }
-}
-function closeWebApp() {
-  document.getElementById('webapp-modal')?.classList.remove('open');
-  document.body.style.overflow = '';
-}
+/* webapp modal - openWebApp/closeWebApp은 <head>에 선언됨 */
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('btn-open-webapp')?.addEventListener('click', openWebApp);
   document.getElementById('btn-open-webapp-hero')?.addEventListener('click', openWebApp);
-
   const modal = document.getElementById('webapp-modal');
   if (modal) modal.addEventListener('click', e => {
     if (!document.getElementById('phone-wrapper')?.contains(e.target)) closeWebApp();
@@ -966,6 +967,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeWebApp(); });
+
+// 버튼 직접 바인딩 (DOMContentLoaded 타이밍 문제 방지)
+window.addEventListener('load', () => {
+  document.getElementById('btn-open-webapp')?.addEventListener('click', openWebApp);
+  document.getElementById('btn-open-webapp-hero')?.addEventListener('click', openWebApp);
+});
 
 /* ── gopang-auth-guide 준수: _onGopangAuth 콜백 ── */
 window._onGopangAuth = async function(user) {
