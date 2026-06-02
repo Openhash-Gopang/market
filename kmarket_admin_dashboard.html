@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>K-Market 관리자 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+:root{
+  --bg:#f8f9fa;--bg-alt:#fff;--bg-subtle:#f1f3f5;
+  --border:#e5e7eb;--border2:#d1d5db;
+  --brand:#3ecf8e;--brand-dk:#1a9e6a;--brand-bg:#f0fdf8;
+  --text:#0f172a;--text2:#1e293b;--text3:#374151;--text4:#6b7280;
+  --red:#ef4444;--amber:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;
+  --green:#16a34a;
+  --nav-h:52px;--sw:48px;--swe:220px;
+  --font:'Inter','Noto Sans KR',-apple-system,sans-serif;
+  --mono:'DM Mono',monospace;
+  --radius:6px;--radius-lg:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;overflow-x:hidden}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);z-index:1000;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px}
+.nav-logo{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--text);font-weight:600;font-size:13px}
+.nav-logo-icon{width:24px;height:24px;border-radius:5px;background:var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-sep{color:var(--border2);font-size:16px;font-weight:200;margin:0 2px}
+.badge-admin{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:99px;background:#fef3c7;color:var(--amber);border:1px solid #fde68a;letter-spacing:.5px}
+.nav-spacer{flex:1}
+.nav-right{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text4)}
+.nav-btn{padding:6px 12px;border-radius:var(--radius);border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text2);cursor:pointer;font-family:var(--font);transition:all .15s}
+.nav-btn:hover{background:var(--bg-subtle)}
+.nav-btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+
+/* ── SIDEBAR ── */
+.sidebar{position:fixed;top:var(--nav-h);left:0;bottom:0;width:var(--sw);background:#fff;border-right:1px solid var(--border);z-index:90;display:flex;flex-direction:column;overflow:hidden;transition:width .18s cubic-bezier(.4,0,.2,1);scrollbar-width:none}
+.sidebar::-webkit-scrollbar{display:none}
+.sidebar:hover{width:var(--swe);box-shadow:2px 0 16px rgba(0,0,0,.07)}
+.sb-sec{padding:5px 0}
+.sb-sec+.sb-sec{border-top:1px solid #f3f4f6;margin-top:2px}
+.sb-sec-last{margin-top:auto}
+.sb-lbl{height:22px;padding:0 14px;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#9ca3af;display:flex;align-items:center;white-space:nowrap;overflow:hidden;opacity:0;transition:opacity .12s}
+.sidebar:hover .sb-lbl{opacity:1}
+.sn{display:flex;align-items:center;gap:10px;height:40px;padding:0 13px;width:100%;border:none;background:none;font-family:var(--font);cursor:pointer;color:#6b7280;white-space:nowrap;overflow:hidden;transition:background .1s,color .1s;text-decoration:none;text-align:left}
+.sn:hover{background:#f9fafb;color:#111827}
+.sn.active{background:var(--brand-bg);color:var(--brand-dk)}
+.sn.active .si svg{stroke:var(--brand-dk)}
+.si{width:24px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.si svg{width:18px;height:18px;stroke:#6b7280;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .1s;display:block}
+.sn:hover .si svg{stroke:#111827}
+.sl{font-size:13px;color:inherit;opacity:0;transition:opacity .1s .03s;white-space:nowrap;flex:1}
+.sidebar:hover .sl{opacity:1}
+.sbadge{font-size:11px;font-weight:600;border-radius:8px;padding:1px 6px;opacity:0;transition:opacity .1s .03s;flex-shrink:0}
+.sidebar:hover .sbadge{opacity:1}
+.sbadge.red{background:#fee2e2;color:#dc2626}
+.sbadge.amber{background:#fef3c7;color:#d97706}
+.sbadge.green{background:#dcfce7;color:#15803d}
+.sbadge.blue{background:#dbeafe;color:#1d4ed8}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sw);padding-top:var(--nav-h);transition:margin-left .18s cubic-bezier(.4,0,.2,1);min-height:100vh}
+body:has(.sidebar:hover) .main{margin-left:var(--swe)}
+
+/* ── DASHBOARD SECTIONS ── */
+.dash-section{padding:24px 28px;border-bottom:1px solid var(--border)}
+.dash-section-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.dash-section-sub{font-size:12px;color:var(--text4);font-family:var(--mono);margin-bottom:16px}
+
+/* ── KPI TOP ROW ── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:20px 28px;background:#fff;border-bottom:1px solid var(--border)}
+.kpi-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;position:relative;overflow:hidden;transition:box-shadow .15s}
+.kpi-box:hover{box-shadow:var(--shadow-md)}
+.kpi-box-accent{position:absolute;top:0;left:0;width:3px;height:100%;border-radius:var(--radius) 0 0 var(--radius)}
+.kpi-label{font-size:11px;font-family:var(--mono);color:var(--text4);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.kpi-val{font-size:22px;font-weight:700;letter-spacing:-1px;color:var(--text);line-height:1;margin-bottom:5px}
+.kpi-change{font-size:12px;display:flex;align-items:center;gap:3px;font-weight:500}
+.kpi-change.up{color:var(--green)}
+.kpi-change.dn{color:var(--red)}
+.kpi-period{font-size:10px;color:var(--text4);font-family:var(--mono);margin-top:2px}
+.sparkline-wrap{margin-top:8px;height:32px}
+
+/* ── CHART GRID ── */
+.chart-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-grid-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px}
+.chart-grid-full{display:grid;grid-template-columns:1fr;gap:16px}
+.chart-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;overflow:hidden}.chart-wrap{position:relative;width:100%}
+.chart-card-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px}
+.chart-card-title{font-size:14px;font-weight:600;color:var(--text)}
+.chart-card-sub{font-size:11px;color:var(--text4);margin-top:1px;font-family:var(--mono)}
+.period-tabs{display:flex;gap:2px;background:var(--bg-subtle);border-radius:var(--radius);padding:2px}
+.ptab{border:none;background:transparent;font-size:11px;font-family:var(--mono);color:var(--text4);padding:3px 8px;border-radius:4px;cursor:pointer;transition:all .15s;font-weight:500}
+.ptab.active{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06);font-weight:600}
+
+/* ── TABLES ── */
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{padding:9px 12px;text-align:left;font-size:11px;font-family:var(--mono);font-weight:600;color:var(--text4);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg-subtle)}
+.data-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:var(--bg-subtle)}
+.td-num{text-align:right;font-family:var(--mono);font-weight:500}
+.td-pct-bar{display:flex;align-items:center;gap:8px}
+.td-bar-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.td-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.badge-sm{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+.badge-green{background:#dcfce7;color:#15803d}
+.badge-amber{background:#fef3c7;color:#d97706}
+.badge-red{background:#fee2e2;color:#dc2626}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+
+/* ── FINANCIAL STATEMENTS ── */
+.fs-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.fs-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.fs-card-hd{padding:12px 16px;background:var(--bg-subtle);border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--text);display:flex;justify-content:space-between;align-items:center}
+.fs-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px}
+.fs-row:last-child{border-bottom:none}
+.fs-row.total{background:var(--brand-bg);font-weight:700}
+.fs-row.subtotal{background:var(--bg-subtle);font-weight:600}
+.fs-label{color:var(--text3)}
+.fs-val{font-family:var(--mono);font-weight:600;color:var(--text)}
+.fs-val.pos{color:var(--green)}
+.fs-val.neg{color:var(--red)}
+
+/* ── ALERT PANEL ── */
+.alert-list{display:flex;flex-direction:column;gap:8px}
+.alert-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);background:#fff}
+.alert-icon{width:28px;height:28px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.alert-icon.red{background:#fee2e2;color:#dc2626}
+.alert-icon.amber{background:#fef3c7;color:#d97706}
+.alert-icon.green{background:#dcfce7;color:#16a34a}
+.alert-icon.blue{background:#dbeafe;color:#1d4ed8}
+.alert-title{font-size:13px;font-weight:600;color:var(--text)}
+.alert-desc{font-size:12px;color:var(--text4);margin-top:1px}
+.alert-time{font-family:var(--mono);font-size:10px;color:var(--text4);margin-left:auto;flex-shrink:0}
+
+/* ── HR PANEL ── */
+.hr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.hr-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;text-align:center}
+.hr-val{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.5px}
+.hr-lbl{font-size:11px;color:var(--text4);font-family:var(--mono);margin-top:2px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.chart-grid-3{grid-template-columns:1fr 1fr}.fs-grid{grid-template-columns:1fr}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0!important}.kpi-row{grid-template-columns:repeat(2,1fr)}.chart-grid-2,.chart-grid-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a class="nav-logo" href="kmarket_seller_template.html">
+    <div class="nav-logo-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></div>
+    <span id="nav-store-name">K-Market</span>
+  </a>
+  <span class="nav-sep">/</span>
+  <span style="font-size:12px;color:var(--text4)">관리자 대시보드</span>
+  <span class="badge-admin">ADMIN</span>
+  <div class="nav-spacer"></div>
+  <div class="nav-right">
+    <span id="nav-clock" style="font-family:var(--mono)">--:--</span>
+    <span style="color:var(--border2)">|</span>
+    <span id="nav-date" style="font-family:var(--mono)">----.--.--</span>
+    <button class="nav-btn" onclick="refreshAll()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      새로고침
+    </button>
+    <a class="nav-btn" href="kmarket_seller_template.html">← 판매자 사이트</a>
+  </div>
+</nav>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="sb-sec">
+    <button class="sn active" id="sn-overview" onclick="snActive(this);showSection('overview')">
+      <span class="si"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+      <span class="sl">전체 현황</span>
+    </button>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">매출 & 판매</div>
+    <button class="sn" id="sn-sales" onclick="snActive(this);showSection('sales')">
+      <span class="si"><svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+      <span class="sl">매출 분석</span>
+    </button>
+    <button class="sn" id="sn-products-dash" onclick="snActive(this);showSection('products-dash')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+      <span class="sl">상품 현황</span>
+    </button>
+    <button class="sn" id="sn-market" onclick="snActive(this);showSection('market')">
+      <span class="si"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+      <span class="sl">시장 비교</span>
+    </button>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">재무</div>
+    <button class="sn" id="sn-finance" onclick="snActive(this);showSection('finance')">
+      <span class="si"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+      <span class="sl">재무제표</span>
+    </button>
+    <button class="sn" id="sn-tax" onclick="snActive(this);showSection('tax')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+      <span class="sl">세금 관리</span>
+      <span class="sbadge amber">D-14</span>
+    </button>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">조직</div>
+    <button class="sn" id="sn-hr" onclick="snActive(this);showSection('hr')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      <span class="sl">직원 관리</span>
+    </button>
+    <button class="sn" id="sn-strategy" onclick="snActive(this);showSection('strategy')">
+      <span class="si"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+      <span class="sl">경영 전략</span>
+    </button>
+  </div>
+  <div class="sb-sec sb-sec-last">
+    <button class="sn" id="sn-alerts-sb" onclick="snActive(this);showSection('alerts')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+      <span class="sl">알림</span>
+      <span class="sbadge red" id="sb-alert-count">3</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<div class="main" id="main">
+
+  <!-- ── KPI TOP ROW (항상 고정) ── -->
+  <div class="kpi-row" id="kpi-top">
+    <!-- JS 렌더 -->
+  </div>
+
+  <!-- ── OVERVIEW ── -->
+  <div id="section-overview">
+
+    <div class="dash-section">
+      <div class="dash-section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-dk)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
+        매출 & 이익 추이
+      </div>
+      <div class="dash-section-sub">월별 매출액, 영업이익, 순이익 비교</div>
+      <div class="chart-grid-3">
+        <div class="chart-card" style="grid-column:1/3">
+          <div class="chart-card-hd">
+            <div>
+              <div class="chart-card-title">매출 · 영업이익 · 순이익 (월별)</div>
+              <div class="chart-card-sub">단위: 천원</div>
+            </div>
+            <div class="period-tabs">
+              <button class="ptab active">월별</button>
+              <button class="ptab">분기</button>
+              <button class="ptab">연간</button>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:200px"><canvas id="chart-revenue" height="200" style="max-height:200px;width:100%"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-hd">
+            <div>
+              <div class="chart-card-title">이익률</div>
+              <div class="chart-card-sub">영업·순이익률 추세</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:200px"><canvas id="chart-margin" height="200" style="max-height:200px;width:100%"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-section">
+      <div class="dash-section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-dk)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        이번 달 현황
+      </div>
+      <div class="dash-section-sub">당월 누계 vs. 전월 동기 비교</div>
+      <div class="chart-grid-2">
+        <div class="chart-card">
+          <div class="chart-card-hd"><div class="chart-card-title">판매량 추이 (일별)</div></div>
+          <div class="chart-wrap" style="height:160px"><canvas id="chart-daily-sales" height="160" style="max-height:160px;width:100%"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-hd"><div class="chart-card-title">카테고리별 매출 비중</div></div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <div class="chart-wrap" style="height:150px"><canvas id="chart-cat-mix" width="150" height="150" style="flex-shrink:0"></canvas></div>
+            <div id="cat-mix-legend" style="flex:1;font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-section">
+      <div class="dash-section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        실시간 알림 & 전략 과제
+      </div>
+      <div class="dash-section-sub">AI가 감지한 이상 신호 및 권고 사항</div>
+      <div class="alert-list" id="alert-list"></div>
+    </div>
+
+  </div><!-- /overview -->
+
+  <!-- ── FINANCE ── -->
+  <div id="section-finance" style="display:none">
+    <div class="dash-section">
+      <div class="dash-section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-dk)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        재무제표 — <span id="fs-period-label">2026년 5월</span>
+      </div>
+      <div class="dash-section-sub">손익계산서 · 현금흐름 · 대차대조표 요약</div>
+      <div class="fs-grid" id="fs-grid"></div>
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">영업이익률 추세</div>
+      <div class="chart-card" style="max-width:700px">
+        <div class="chart-wrap" style="height:180px"><canvas id="chart-op-margin" height="180" style="max-height:180px;width:100%"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HR ── -->
+  <div id="section-hr" style="display:none">
+    <div class="dash-section">
+      <div class="dash-section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-dk)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        직원 현황
+      </div>
+      <div class="dash-section-sub">인건비 · 복지 · 생산성 지표</div>
+      <div class="hr-grid" id="hr-kpi-grid"></div>
+      <div class="chart-card" style="max-width:700px">
+        <div class="chart-card-hd"><div class="chart-card-title">인건비 추이 (월별)</div></div>
+        <div class="chart-wrap" style="height:180px"><canvas id="chart-hr-cost" height="180" style="max-height:180px;width:100%"></canvas></div>
+      </div>
+      <div style="margin-top:16px">
+        <table class="data-table" id="hr-table"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STRATEGY ── -->
+  <div id="section-strategy" style="display:none">
+    <div class="dash-section">
+      <div class="dash-section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-dk)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        AI 경영 전략 과제
+      </div>
+      <div class="dash-section-sub">일일 · 주간 · 월간 · 분기별 실행 계획</div>
+      <div id="strategy-board"></div>
+    </div>
+  </div>
+
+  <!-- ── TAX ── -->
+  <div id="section-tax" style="display:none">
+    <div class="dash-section">
+      <div class="dash-section-title">세금 관리 & 납부 현황</div>
+      <div class="dash-section-sub">K-Tax 연동 · 자동 계산 · 납부 일정</div>
+      <div id="tax-panel"></div>
+    </div>
+  </div>
+
+  <!-- ── 기타 섹션 플레이스홀더 ── -->
+  <div id="section-sales" style="display:none">
+    <div class="dash-section"><div class="dash-section-title">매출 상세 분석</div><div class="chart-card"><div class="chart-wrap" style="height:220px"><canvas id="chart-sales-detail" height="220" style="max-height:220px;width:100%"></canvas></div></div></div>
+  </div>
+  <div id="section-products-dash" style="display:none">
+    <div class="dash-section"><div class="dash-section-title">상품 현황</div><div id="products-table-wrap"></div></div>
+  </div>
+  <div id="section-market" style="display:none">
+    <div class="dash-section"><div class="dash-section-title">시장 비교 분석</div><div class="chart-card"><div class="chart-wrap" style="height:220px"><canvas id="chart-market-cmp" height="220" style="max-height:220px;width:100%"></canvas></div></div></div>
+  </div>
+  <div id="section-alerts" style="display:none">
+    <div class="dash-section"><div class="dash-section-title">전체 알림</div><div class="alert-list" id="alert-list-full"></div></div>
+  </div>
+
+</div><!-- /main -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'Inter','Noto Sans KR',sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = '#6b7280';
+
+// ── 관리자 데이터 ─────────────────────────────────────
+// 실제 운영 시 SELLER_DATA와 Supabase에서 로드
+const ADMIN_DATA = {
+  store_name: "제주 흑돼지 농장",
+  period: "2026년 6월",
+  kpis:[
+    {label:"이번달 매출",    val:"₩4,830,000", change:+14.2, period:"전월 대비", color:"#3ecf8e"},
+    {label:"영업이익",       val:"₩1,246,000", change:+9.8,  period:"전월 대비", color:"#3b82f6"},
+    {label:"영업이익률",     val:"25.8%",       change:+1.2,  period:"전월 대비", color:"#8b5cf6"},
+    {label:"판매 건수",      val:"127건",       change:+18.7, period:"전월 대비", color:"#f59e0b"},
+    {label:"재구매율",       val:"38.4%",       change:+4.3,  period:"전월 대비", color:"#06b6d4"},
+  ],
+  monthly:{
+    labels:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+    revenue:[2100,1890,2640,3010,2870,3580,4120,3840,4420,4680,4290,5010],
+    op_profit:[480,390,620,740,680,890,1050,960,1120,1190,1080,1310],
+    net_profit:[360,290,460,560,510,680,800,730,860,920,830,1010],
+    op_margin:[22.9,20.6,23.5,24.6,23.7,24.9,25.5,25.0,25.3,25.4,25.2,26.1],
+    net_margin:[17.1,15.3,17.4,18.6,17.8,19.0,19.4,19.0,19.5,19.7,19.3,20.2],
+  },
+  daily_this_month:[
+    182,145,210,178,230,195,162,198,245,212,
+    188,224,197,165,243,219,178,256,233,201,
+    189,247,215,198,262,234,207,278,251,219,180,
+  ],
+  category_mix:{
+    labels:['삼겹살','목살','갈비'],
+    data:[48,31,21],
+  },
+  finance:{
+    income_stmt:[
+      {label:'매출액',         val:4830000, type:'revenue'},
+      {label:'매출원가',        val:-2890000,type:'cost'},
+      {label:'매출총이익',      val:1940000, type:'subtotal'},
+      {label:'판매관리비',       val:-694000, type:'cost'},
+      {label:'영업이익',        val:1246000, type:'subtotal'},
+      {label:'영업이익률',       val:'25.8%', type:'pct'},
+      {label:'영업외수익',       val:32000,   type:'revenue'},
+      {label:'영업외비용',       val:-18000,  type:'cost'},
+      {label:'세전이익',        val:1260000, type:'subtotal'},
+      {label:'법인세 (25%)',    val:-315000, type:'cost'},
+      {label:'당기순이익',       val:945000,  type:'total'},
+    ],
+    cash_flow:[
+      {label:'영업활동 현금흐름', val:1180000, type:'revenue'},
+      {label:'투자활동 현금흐름', val:-240000, type:'cost'},
+      {label:'재무활동 현금흐름', val:-320000, type:'cost'},
+      {label:'기초 현금',        val:2840000, type:''},
+      {label:'기말 현금',        val:3460000, type:'total'},
+    ],
+    balance:[
+      {label:'유동자산',   val:4320000, type:'revenue'},
+      {label:'비유동자산', val:1840000, type:'revenue'},
+      {label:'자산 합계',  val:6160000, type:'subtotal'},
+      {label:'유동부채',   val:980000,  type:'cost'},
+      {label:'비유동부채', val:420000,  type:'cost'},
+      {label:'부채 합계',  val:1400000, type:'cost'},
+      {label:'자본금',     val:2000000, type:''},
+      {label:'이익잉여금', val:2760000, type:''},
+      {label:'자본 합계',  val:4760000, type:'total'},
+    ],
+  },
+  hr:{
+    kpis:[
+      {label:'직원 수',     val:'4명'},
+      {label:'이번달 인건비', val:'₩6,800,000'},
+      {label:'1인당 생산성',  val:'₩1,207,500'},
+      {label:'직원 만족도',   val:'4.2 / 5.0'},
+    ],
+    employees:[
+      {name:'김*수',role:'대표',salary:2200000,performance:92,status:'정규직'},
+      {name:'이*영',role:'판매',salary:1800000,performance:88,status:'정규직'},
+      {name:'박*진',role:'배송',salary:1600000,performance:85,status:'정규직'},
+      {name:'최*희',role:'관리',salary:1200000,performance:90,status:'파트타임'},
+    ],
+    monthly_cost:[
+      6200000,6200000,6400000,6400000,6600000,
+      6800000,6800000,7000000,7000000,7200000,7200000,7400000
+    ],
+  },
+  tax:{
+    upcoming:[
+      {name:'부가가치세 1기 확정',  due:'2026-07-25', amount:242000,  status:'예정'},
+      {name:'종합소득세 중간예납',   due:'2026-11-30', amount:180000,  status:'예정'},
+      {name:'4대보험료 (6월)',      due:'2026-06-10', amount:612000,  status:'납부완료'},
+    ],
+    ytd_tax_paid: 1640000,
+    estimated_annual: 3280000,
+  },
+  strategy:{
+    daily:[
+      {task:'재고 현황 점검 및 발주 확인', status:'완료', ai:'자동'},
+      {task:'소비자 리뷰 분석 및 응대',    status:'진행중', ai:'AI'},
+      {task:'당일 주문 출고 처리',         status:'완료', ai:'자동'},
+    ],
+    weekly:[
+      {task:'판매 현황 주간 리포트 작성',   status:'예정', ai:'AI'},
+      {task:'재고 소진율 분석 및 발주 계획', status:'예정', ai:'AI'},
+      {task:'경쟁사 가격 모니터링',         status:'완료', ai:'자동'},
+    ],
+    monthly:[
+      {task:'재무제표 작성 및 세금 계산',    status:'진행중', ai:'AI'},
+      {task:'마케팅 성과 분석',             status:'예정', ai:''},
+      {task:'직원 성과 평가 및 급여 계산',   status:'예정', ai:'AI'},
+    ],
+    quarterly:[
+      {task:'경영 전략 검토 및 수정',        status:'예정', ai:''},
+      {task:'투자 계획 수립',               status:'예정', ai:''},
+      {task:'연간 세금 예측 및 절세 전략',   status:'예정', ai:'AI'},
+    ],
+  },
+  alerts:[
+    {type:'amber', title:'재고 부족 경보', desc:'흑돼지 갈비 재고가 15% 미만입니다. 발주를 권장합니다.', time:'10분 전'},
+    {type:'green', title:'판매 목표 달성', desc:'이번달 목표(₩4,500,000) 대비 107.3% 달성했습니다.', time:'1시간 전'},
+    {type:'blue',  title:'가성비 평점 상승', desc:'가성비 지수가 4.6으로 지난달 대비 0.2 상승했습니다.', time:'3시간 전'},
+    {type:'amber', title:'세금 납부 예정', desc:'부가가치세 1기 확정 신고 마감 19일 남았습니다.', time:'오늘'},
+    {type:'red',   title:'경쟁사 가격 인하', desc:'A마켓에서 유사 삼겹살 상품 가격을 5% 인하했습니다.', time:'어제'},
+  ],
+};
+
+// ── 네비게이션 ────────────────────────────────────────
+const sections = ['overview','sales','products-dash','market','finance','tax','hr','strategy','alerts'];
+function showSection(id){
+  sections.forEach(s=>{
+    const el = document.getElementById('section-'+s);
+    if(el) el.style.display = s===id ? '' : 'none';
+  });
+}
+function snActive(el){
+  document.querySelectorAll('.sn').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── KPI 상단 ──────────────────────────────────────────
+function renderKPITop(){
+  const grid = document.getElementById('kpi-top');
+  if(!grid) return;
+  grid.innerHTML = ADMIN_DATA.kpis.map(k=>`
+    <div class="kpi-box">
+      <div class="kpi-box-accent" style="background:${k.color}"></div>
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-change ${k.change>=0?'up':'dn'}">
+        ${k.change>=0?'▲':'▼'} ${Math.abs(k.change)}%
+        <span style="font-weight:400;color:var(--text4);margin-left:3px">${k.period}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ── 차트들 ────────────────────────────────────────────
+function renderCharts(){
+  const m = ADMIN_DATA.monthly;
+  const palette = ['#3ecf8e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+
+  // 매출·이익 복합 차트
+  new Chart(document.getElementById('chart-revenue'),{
+    type:'bar',
+    data:{
+      labels:m.labels,
+      datasets:[
+        {label:'매출액',    data:m.revenue,   backgroundColor:'rgba(62,207,142,.2)', borderColor:'#3ecf8e', borderWidth:1.5, borderRadius:3, order:2},
+        {label:'영업이익',  data:m.op_profit, backgroundColor:'rgba(59,130,246,.2)', borderColor:'#3b82f6', borderWidth:1.5, borderRadius:3, order:2},
+        {label:'순이익',    data:m.net_profit,backgroundColor:'rgba(245,158,11,.2)', borderColor:'#f59e0b', borderWidth:1.5, borderRadius:3, order:2},
+        {label:'추세(매출)',data:m.revenue.map((_,i)=>m.revenue[0]+(m.revenue[m.revenue.length-1]-m.revenue[0])*i/(m.revenue.length-1)),
+         type:'line',borderColor:'#3ecf8e',borderWidth:1.5,borderDash:[4,2],pointRadius:0,tension:.4,fill:false,order:1},
+      ],
+    },
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index'},
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:'#f3f4f6'},ticks:{callback:v=>(v/1000)+'K'}}},
+    },
+  });
+
+  // 이익률
+  new Chart(document.getElementById('chart-margin'),{
+    type:'line',
+    data:{
+      labels:m.labels,
+      datasets:[
+        {label:'영업이익률',data:m.op_margin, borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',borderWidth:2,pointRadius:3,tension:.4,fill:true},
+        {label:'순이익률',  data:m.net_margin,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.04)',borderWidth:2,pointRadius:3,tension:.4,fill:true},
+      ],
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},
+      scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'},grid:{color:'#f3f4f6'}}},
+    },
+  });
+
+  // 일별 판매량
+  const daily = ADMIN_DATA.daily_this_month;
+  new Chart(document.getElementById('chart-daily-sales'),{
+    type:'line',
+    data:{
+      labels:Array.from({length:daily.length},(_,i)=>`${i+1}일`),
+      datasets:[
+        {label:'금월',     data:daily, borderColor:'#3ecf8e',backgroundColor:'rgba(62,207,142,.1)',borderWidth:2,pointRadius:0,tension:.4,fill:true},
+        {label:'추세',     data:daily.map((_,i)=>daily[0]+(daily[daily.length-1]-daily[0])*i/(daily.length-1)),
+         borderColor:'#f59e0b',borderWidth:1.5,borderDash:[4,2],pointRadius:0,tension:.4,fill:false},
+      ],
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:10}},y:{grid:{color:'#f3f4f6'}}},
+    },
+  });
+
+  // 카테고리 믹스
+  const cm = ADMIN_DATA.category_mix;
+  new Chart(document.getElementById('chart-cat-mix'),{
+    type:'doughnut',
+    data:{labels:cm.labels,datasets:[{data:cm.data,backgroundColor:palette,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:false,cutout:'60%',plugins:{legend:{display:false}}},
+  });
+  const leg = document.getElementById('cat-mix-legend');
+  if(leg) leg.innerHTML = cm.labels.map((l,i)=>`
+    <div style="display:flex;align-items:center;gap:7px;padding:4px 0;font-size:13px">
+      <div style="width:10px;height:10px;border-radius:2px;background:${palette[i]};flex-shrink:0"></div>
+      <span>${l}</span><span style="margin-left:auto;font-family:var(--mono);color:var(--text4)">${cm.data[i]}%</span>
+    </div>`).join('');
+
+  // 영업이익률 추세 (재무 섹션)
+  new Chart(document.getElementById('chart-op-margin'),{
+    type:'line',
+    data:{
+      labels:m.labels,
+      datasets:[
+        {label:'영업이익률',data:m.op_margin,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',borderWidth:2,pointRadius:3,tension:.4,fill:true},
+        {label:'목표(28%)', data:Array(12).fill(28),borderColor:'#ef4444',borderWidth:1.5,borderDash:[4,2],pointRadius:0},
+      ],
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},
+      scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'},grid:{color:'#f3f4f6'}}},
+    },
+  });
+
+  // 인건비 추이
+  new Chart(document.getElementById('chart-hr-cost'),{
+    type:'bar',
+    data:{
+      labels:ADMIN_DATA.monthly.labels,
+      datasets:[
+        {label:'인건비',    data:ADMIN_DATA.hr.monthly_cost, backgroundColor:'rgba(139,92,246,.25)',borderColor:'#8b5cf6',borderWidth:1.5,borderRadius:3},
+        {label:'추세',      data:ADMIN_DATA.hr.monthly_cost.map((_,i)=>ADMIN_DATA.hr.monthly_cost[0]+(ADMIN_DATA.hr.monthly_cost[11]-ADMIN_DATA.hr.monthly_cost[0])*i/11),
+         type:'line',borderColor:'#f59e0b',borderWidth:2,borderDash:[4,2],pointRadius:0,tension:.4,fill:false},
+      ],
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:'#f3f4f6'},ticks:{callback:v=>(v/10000)+'만'}}},
+    },
+  });
+}
+
+// ── 재무제표 ──────────────────────────────────────────
+function renderFinance(){
+  const grid = document.getElementById('fs-grid');
+  if(!grid) return;
+  const titles = ['손익계산서','현금흐름표','대차대조표'];
+  const datasets = [ADMIN_DATA.finance.income_stmt, ADMIN_DATA.finance.cash_flow, ADMIN_DATA.finance.balance];
+  grid.innerHTML = datasets.map((rows,di)=>`
+    <div class="fs-card">
+      <div class="fs-card-hd">
+        ${titles[di]}
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text4)">${ADMIN_DATA.period}</span>
+      </div>
+      ${rows.map(r=>`
+        <div class="fs-row ${r.type==='total'?'total':r.type==='subtotal'?'subtotal':''}">
+          <span class="fs-label">${r.label}</span>
+          <span class="fs-val ${typeof r.val==='number'?r.val>=0?'pos':'neg':''}">
+            ${typeof r.val==='number'?(r.val>=0?'':'-')+'₩'+Math.abs(r.val).toLocaleString():r.val}
+          </span>
+        </div>`).join('')}
+    </div>`).join('');
+  if(document.getElementById('fs-period-label'))
+    document.getElementById('fs-period-label').textContent = ADMIN_DATA.period;
+}
+
+// ── HR ────────────────────────────────────────────────
+function renderHR(){
+  const kpiGrid = document.getElementById('hr-kpi-grid');
+  if(kpiGrid) kpiGrid.innerHTML = ADMIN_DATA.hr.kpis.map(k=>`
+    <div class="hr-card"><div class="hr-val">${k.val}</div><div class="hr-lbl">${k.label}</div></div>`).join('');
+
+  const table = document.getElementById('hr-table');
+  if(table) table.innerHTML = `
+    <thead><tr>
+      <th>이름</th><th>직무</th><th>급여</th><th>성과</th><th>고용형태</th>
+    </tr></thead>
+    <tbody>${ADMIN_DATA.hr.employees.map(e=>`
+    <tr>
+      <td style="font-weight:600">${e.name}</td>
+      <td>${e.role}</td>
+      <td class="td-num">₩${e.salary.toLocaleString()}</td>
+      <td>
+        <div class="td-pct-bar">
+          <div class="td-bar-track"><div class="td-bar-fill" style="width:${e.performance}%;background:${e.performance>=90?'#3ecf8e':e.performance>=80?'#3b82f6':'#f59e0b'}"></div></div>
+          <span style="font-family:var(--mono);font-size:12px">${e.performance}점</span>
+        </div>
+      </td>
+      <td><span class="badge-sm ${e.status==='정규직'?'badge-blue':'badge-green'}">${e.status}</span></td>
+    </tr>`).join('')}</tbody>`;
+}
+
+// ── 전략 과제 ─────────────────────────────────────────
+function renderStrategy(){
+  const board = document.getElementById('strategy-board');
+  if(!board) return;
+  const periods = [{key:'daily',label:'일일'},{key:'weekly',label:'주간'},{key:'monthly',label:'월간'},{key:'quarterly',label:'분기'}];
+  board.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+  ${periods.map(p=>`
+    <div class="chart-card">
+      <div class="chart-card-hd">
+        <div class="chart-card-title">${p.label} 과제</div>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--brand-dk);background:var(--brand-bg);padding:2px 8px;border-radius:99px;border:1px solid #a7f3d0">
+          ${ADMIN_DATA.strategy[p.key].filter(t=>t.status==='완료').length}/${ADMIN_DATA.strategy[p.key].length} 완료
+        </span>
+      </div>
+      ${ADMIN_DATA.strategy[p.key].map(t=>`
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="margin-top:2px;flex-shrink:0">
+            ${t.status==='완료'
+              ?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+              :t.status==='진행중'
+              ?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+              :'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>'}
+          </div>
+          <div style="flex:1;font-size:13px;color:var(--text2)">${t.task}</div>
+          ${t.ai?`<span style="font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:var(--brand-bg);color:var(--brand-dk);flex-shrink:0">${t.ai}</span>`:''}
+        </div>`).join('')}
+    </div>`).join('')}
+  </div>`;
+}
+
+// ── 세금 ─────────────────────────────────────────────
+function renderTax(){
+  const panel = document.getElementById('tax-panel');
+  if(!panel) return;
+  panel.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="chart-card">
+        <div class="chart-card-title" style="margin-bottom:12px">납부 현황 (연간 누계)</div>
+        <div style="font-size:28px;font-weight:700;color:var(--text);letter-spacing:-1px;margin-bottom:4px">₩${ADMIN_DATA.tax.ytd_tax_paid.toLocaleString()}</div>
+        <div style="font-size:12px;color:var(--text4);font-family:var(--mono)">연간 예상 납부액: ₩${ADMIN_DATA.tax.estimated_annual.toLocaleString()}</div>
+        <div style="margin-top:10px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${Math.round(ADMIN_DATA.tax.ytd_tax_paid/ADMIN_DATA.tax.estimated_annual*100)}%;background:var(--brand);border-radius:3px"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text4);margin-top:4px;font-family:var(--mono)">${Math.round(ADMIN_DATA.tax.ytd_tax_paid/ADMIN_DATA.tax.estimated_annual*100)}% 납부</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title" style="margin-bottom:12px">예정 납부 일정</div>
+        ${ADMIN_DATA.tax.upcoming.map(t=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <div style="flex:1">
+              <div style="font-weight:500;color:var(--text)">${t.name}</div>
+              <div style="font-size:11px;color:var(--text4);font-family:var(--mono)">${t.due}</div>
+            </div>
+            <div style="font-family:var(--mono);font-weight:600">₩${t.amount.toLocaleString()}</div>
+            <span class="badge-sm ${t.status==='납부완료'?'badge-green':'badge-amber'}">${t.status}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ── 알림 ─────────────────────────────────────────────
+function renderAlerts(){
+  const iconMap = {
+    amber:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    red:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    green:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    blue: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  };
+  ['alert-list','alert-list-full'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = ADMIN_DATA.alerts.map(a=>`
+      <div class="alert-item">
+        <div class="alert-icon ${a.type}">${iconMap[a.type]||''}</div>
+        <div style="flex:1">
+          <div class="alert-title">${a.title}</div>
+          <div class="alert-desc">${a.desc}</div>
+        </div>
+        <div class="alert-time">${a.time}</div>
+      </div>`).join('');
+  });
+  const cnt = document.getElementById('sb-alert-count');
+  if(cnt) cnt.textContent = ADMIN_DATA.alerts.filter(a=>a.type!=='green').length;
+}
+
+// ── 시계 ─────────────────────────────────────────────
+function updateClock(){
+  const now = new Date();
+  const clock = document.getElementById('nav-clock');
+  const dateEl = document.getElementById('nav-date');
+  if(clock) clock.textContent = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  if(dateEl) dateEl.textContent = now.toLocaleDateString('ko-KR');
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// ── 상단 스토어명 ─────────────────────────────────────
+function refreshAll(){
+  location.reload();
+}
+
+// ── 초기화 ────────────────────────────────────────────
+(function init(){
+  const name = document.getElementById('nav-store-name');
+  if(name) name.textContent = ADMIN_DATA.store_name + ' — 관리자';
+  renderKPITop();
+  renderCharts();
+  renderFinance();
+  renderHR();
+  renderStrategy();
+  renderTax();
+  renderAlerts();
+})();
+</script>
+</body>
+</html>
