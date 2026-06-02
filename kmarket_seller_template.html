@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title data-bind="business.name">업체명 — K-Market</title>
+<meta name="seller-ipv6" content="PENDING"/>
+<meta name="openhash-node" content="PENDING"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── Analytics ── */
+.analytics-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:768px){.analytics-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px}
+.kpi-card-label{font-size:11px;font-family:var(--mono);color:var(--text4);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.kpi-card-val{font-size:24px;font-weight:700;letter-spacing:-1px;color:var(--text);line-height:1}
+.kpi-card-change{font-size:12px;margin-top:5px;display:flex;align-items:center;gap:3px;font-weight:500}
+.kpi-card-change.up{color:#16a34a}
+.kpi-card-change.down{color:var(--red)}
+.kpi-sparkline{margin-top:10px;height:36px}
+
+.analytics-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.analytics-chart-grid{grid-template-columns:1fr}}
+.analytics-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px}
+.analytics-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px}
+.analytics-card-title{font-size:14px;font-weight:600;color:var(--text)}
+.analytics-card-sub{font-size:11px;color:var(--text4);margin-top:2px;font-family:var(--mono)}
+.analytics-badge-val{font-size:18px;font-weight:700;color:var(--brand-dk);font-family:var(--mono);flex-shrink:0}
+.period-tabs{display:flex;gap:2px;background:var(--bg-subtle);border-radius:var(--radius);padding:2px}
+.ptab{border:none;background:transparent;font-size:11px;font-family:var(--mono);color:var(--text4);padding:3px 8px;border-radius:4px;cursor:pointer;transition:all .15s}
+.ptab.active{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06);font-weight:600}
+</style>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+:root{
+  --bg:#f8f9fa;--bg-alt:#fff;--bg-subtle:#f1f3f5;
+  --border:#e5e7eb;--border2:#d1d5db;
+  --brand:#3ecf8e;--brand-dk:#1a9e6a;--brand-lt:#d1fae5;--brand-bg:#f0fdf8;
+  --text:#0f172a;--text2:#1e293b;--text3:#374151;--text4:#6b7280;
+  --amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+  --radius:6px;--radius-lg:10px;--radius-xl:14px;
+  --nav-h:52px;--sw:48px;--swe:224px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
+  --font:'Inter','Noto Sans KR',-apple-system,sans-serif;
+  --mono:'DM Mono',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15px;line-height:1.65}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;height:var(--nav-h);z-index:1000;
+  background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:10px;
+}
+.nav-logo{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--text);font-weight:600;font-size:14px;white-space:nowrap}
+.nav-logo-icon{width:24px;height:24px;border-radius:5px;background:var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-sep{color:var(--border2);font-size:16px;font-weight:200;margin:0 2px}
+.nav-sub{font-size:14px;color:var(--text4)}
+.badge-prod{font-family:var(--mono);font-size:14px;padding:2px 7px;border-radius:99px;background:#fffbeb;color:var(--amber);border:1px solid #fde68a}
+.nav-spacer{flex:1}
+.nav-actions{display:flex;align-items:center;gap:7px}
+.nav-distance{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--brand-dk);font-weight:500;padding:4px 10px;background:var(--brand-bg);border:1px solid #a7f3d0;border-radius:99px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--radius);font-size:14px;font-weight:500;font-family:var(--font);cursor:pointer;transition:all .15s;border:1px solid var(--border);background:#fff;color:var(--text2);text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--bg-subtle)}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.btn-primary:hover{background:var(--brand-dk);border-color:var(--brand-dk)}
+
+/* ── LAYOUT ── */
+.layout{display:block;min-height:100vh;padding-top:var(--nav-h)}
+
+/* ── SIDEBAR (school desktop 동일 방식) ── */
+.sidebar{
+  position:fixed;top:var(--nav-h);left:0;bottom:0;
+  width:var(--sw);background:#fff;
+  border-right:1px solid #e5e7eb;z-index:90;
+  display:flex;flex-direction:column;
+  overflow:hidden;overflow-y:auto;
+  transition:width .18s cubic-bezier(.4,0,.2,1);
+  scrollbar-width:none;
+}
+.sidebar::-webkit-scrollbar{display:none}
+.sidebar:hover{width:var(--swe);box-shadow:2px 0 16px rgba(0,0,0,.07)}
+
+.sb-sec{padding:5px 0}
+.sb-sec+.sb-sec{border-top:1px solid #f3f4f6;margin-top:2px}
+.sb-sec-last{margin-top:auto}
+
+.sb-lbl{
+  height:22px;padding:0 14px;
+  font-size:14px;font-weight:700;letter-spacing:.7px;
+  text-transform:uppercase;color:#9ca3af;
+  display:flex;align-items:center;
+  white-space:nowrap;overflow:hidden;
+  opacity:0;transition:opacity .12s;
+}
+.sidebar:hover .sb-lbl{opacity:1}
+
+.sn{
+  display:flex;align-items:center;gap:10px;
+  height:34px;padding:0 14px;width:100%;
+  border:none;background:none;
+  font-family:var(--font);
+  cursor:pointer;color:#6b7280;
+  white-space:nowrap;overflow:hidden;
+  transition:background .1s,color .1s;
+  text-decoration:none;text-align:left;
+}
+.sn:hover{background:#f9fafb;color:#111827}
+.sn.active{background:#f0fdf4;color:#15803d;font-weight:500}
+
+.si{
+  width:24px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.si svg{
+  width:18px;height:18px;
+  stroke:#6b7280;stroke-width:2;
+  fill:none;stroke-linecap:round;stroke-linejoin:round;
+  transition:stroke .1s;display:block;
+}
+.sn:hover  .si svg{stroke:#111827}
+.sn.active .si svg{stroke:#16a34a}
+
+.sl{
+  font-size:14px;color:inherit;
+  opacity:0;transition:opacity .1s .03s;
+  white-space:nowrap;flex:1;
+}
+.sidebar:hover .sl{opacity:1}
+
+.sbadge{
+  font-size:14px;font-weight:600;
+  border-radius:8px;padding:1px 6px;
+  opacity:0;transition:opacity .1s .03s;flex-shrink:0;
+  background:#f3f4f6;color:#6b7280;
+}
+.sidebar:hover .sbadge{opacity:1}
+.sbadge.green{background:#dcfce7;color:#15803d}
+.sbadge.amber{background:#fef3c7;color:#d97706}
+.sbadge.blue {background:#dbeafe;color:#1d4ed8}
+.sbadge.red  {background:#fee2e2;color:#dc2626}
+
+/* 본문 여백 — sidebar 너비만큼 */
+.main{
+  margin-left:var(--sw);
+  transition:margin-left .18s cubic-bezier(.4,0,.2,1);
+  flex:1;display:flex;flex-direction:column;min-width:0;
+}
+body:has(.sidebar:hover) .main{margin-left:var(--swe)}
+
+/* ── 공통 ── */
+section{padding:56px 5%}
+.section-inner{max-width:980px;margin:0 auto}
+.section-tag{display:inline-block;font-family:var(--mono);font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--brand-dk);background:var(--brand-bg);border:1px solid #a7f3d0;padding:2px 9px;border-radius:99px;margin-bottom:12px}
+.section-title{font-size:clamp(18px,2.2vw,24px);font-weight:300;letter-spacing:-.4px;margin-bottom:6px}
+.section-title strong{font-weight:600}
+.sep{border:none;border-top:1px solid var(--border)}
+.dot-bg{background-color:var(--bg);background-image:radial-gradient(circle,#cbd5e1 1px,transparent 1px);background-size:24px 24px}
+.reveal{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* ══════════════════════════════════════════
+   ① STORE HEADER (아마존 스타일 상단 스토어 헤더)
+══════════════════════════════════════════ */
+#store-header{
+  padding:calc(var(--nav-h) + 28px) 5% 24px;
+  background:#fff;border-bottom:1px solid var(--border);
+}
+.store-header-inner{max-width:980px;margin:0 auto;display:flex;gap:20px;align-items:flex-start}
+.store-avatar{width:72px;height:72px;border-radius:12px;background:var(--brand-bg);border:2px solid var(--brand-lt);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--brand-dk)}
+.store-info{flex:1}
+.store-name{font-size:22px;font-weight:700;letter-spacing:-.5px;color:var(--text);margin-bottom:4px}
+.store-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--text4)}
+.store-meta-sep{color:var(--border2)}
+.store-rating{display:flex;align-items:center;gap:4px;color:var(--amber);font-weight:600;font-size:14px}
+.store-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.store-distance{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--brand-dk);font-weight:600;padding:5px 12px;background:var(--brand-bg);border:1px solid #a7f3d0;border-radius:99px}
+
+/* ══════════════════════════════════════════
+   ② PRODUCT LISTING (아마존 스타일 상품 목록)
+══════════════════════════════════════════ */
+#products{background:var(--bg);padding:24px 5%}
+.product-list-inner{max-width:980px;margin:0 auto}
+
+/* 필터 바 */
+.filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.filter-label{font-size:14px;color:var(--text4);font-family:var(--mono);margin-right:4px}
+.filter-chip{padding:4px 12px;border-radius:99px;border:1px solid var(--border);background:#fff;font-size:14px;color:var(--text3);cursor:pointer;transition:all .15s;font-family:var(--font)}
+.filter-chip.active,.filter-chip:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* 상품 리스트 (아마존식 세로 카드) */
+.product-list{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+
+.product-row{
+  background:#fff;display:grid;
+  grid-template-columns:180px 1fr 200px;
+  gap:0;transition:background .12s;
+}
+.product-row:hover{background:var(--bg-subtle)}
+
+/* 왼쪽: 이미지 */
+.pr-img{
+  padding:16px;display:flex;align-items:center;justify-content:center;
+  background:var(--bg-subtle);border-right:1px solid var(--border);
+  cursor:pointer;
+}
+.pr-img img{width:140px;height:140px;object-fit:cover;border-radius:var(--radius)}
+.pr-img-placeholder{width:140px;height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text4);background:#fff;border-radius:var(--radius);border:1px dashed var(--border2)}
+
+/* 가운데: 상품 정보 */
+.pr-info{padding:18px 20px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.pr-name{font-size:15px;font-weight:600;color:var(--text);line-height:1.4}
+.pr-name:hover{color:var(--brand-dk)}
+.pr-desc{font-size:14px;color:var(--text3);line-height:1.6}
+.pr-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+.pr-badge{font-family:var(--mono);font-size:14px;padding:2px 7px;border-radius:4px;font-weight:500}
+.badge-in{background:var(--brand-bg);color:var(--brand-dk);border:1px solid #a7f3d0}
+.badge-low{background:#fffbeb;color:var(--amber);border:1px solid #fde68a}
+.badge-out{background:#fef2f2;color:var(--red);border:1px solid #fecaca}
+.pr-origin{font-size:14px;color:var(--text4);display:flex;align-items:center;gap:3px}
+.pr-rating-row{display:flex;align-items:center;gap:4px;font-size:14px;color:var(--text4)}
+
+/* 오른쪽: 가격 + 주문 패널 */
+.pr-order{
+  padding:18px 16px;border-left:1px solid var(--border);
+  display:flex;flex-direction:column;gap:10px;
+  background:#fff;
+}
+.pr-price{font-size:22px;font-weight:700;color:var(--brand-dk);letter-spacing:-.5px;line-height:1}
+.pr-price-unit{font-size:14px;color:var(--text4);margin-top:2px;font-family:var(--mono)}
+.pr-price-total{font-size:14px;color:var(--text3);margin-top:2px}
+.pr-price-total span{font-weight:600;color:var(--brand-dk)}
+
+/* 수량 조절 */
+.qty-row{display:flex;align-items:center;gap:6px}
+.qty-btn{width:28px;height:28px;border-radius:var(--radius);border:1px solid var(--border);background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:var(--mono);color:var(--text3)}
+.qty-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-bg)}
+.qty-input{width:42px;height:28px;border:1px solid var(--border);border-radius:var(--radius);text-align:center;font-size:14px;font-weight:600;font-family:var(--mono);color:var(--text);outline:none;background:#fff}
+.qty-input:focus{border-color:var(--brand)}
+.pr-ship{font-size:14px;color:var(--text4);display:flex;align-items:center;gap:4px}
+.pr-ship-free{color:var(--brand-dk);font-weight:500}
+
+.add-cart{width:100%;padding:8px;border-radius:var(--radius);border:none;background:var(--brand);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:background .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.add-cart:hover{background:var(--brand-dk)}
+.add-cart:disabled{background:var(--border);color:var(--text4);cursor:not-allowed}
+.buy-now{width:100%;padding:8px;border-radius:var(--radius);border:1px solid var(--brand);background:#fff;color:var(--brand-dk);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.buy-now:hover{background:var(--brand-bg)}
+
+/* ══════════════════════════════════════════
+   ③ CART SUMMARY (하단 장바구니 요약 sticky)
+══════════════════════════════════════════ */
+.cart-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:#fff;border-top:1px solid var(--border);
+  padding:10px 5%;display:flex;align-items:center;gap:16px;
+  z-index:800;transform:translateY(100%);transition:transform .2s ease;
+  box-shadow:0 -4px 20px rgba(0,0,0,.06);
+}
+.cart-bar.visible{transform:translateY(0)}
+.cart-items-summary{flex:1;font-size:14px;color:var(--text2)}
+.cart-total{font-size:18px;font-weight:700;color:var(--brand-dk);letter-spacing:-.5px}
+.cart-total-label{font-size:14px;color:var(--text4);font-family:var(--mono);margin-bottom:1px}
+
+/* ══════════════════════════════════════════
+   ④ REVIEWS (컴팩트)
+══════════════════════════════════════════ */
+#reviews{background:var(--bg-alt);padding:48px 5%}
+.reviews-header{display:flex;align-items:flex-start;gap:40px;margin-bottom:32px}
+.rating-big{flex-shrink:0;text-align:center;width:120px}
+.rating-num{font-size:56px;font-weight:700;letter-spacing:-3px;color:var(--text);line-height:1}
+.rating-stars{display:flex;gap:2px;justify-content:center;margin:6px 0}
+.rating-count{font-size:14px;color:var(--text4);font-family:var(--mono)}
+.rating-bars{flex:1;display:flex;flex-direction:column;gap:6px}
+.rbar-row{display:flex;align-items:center;gap:8px;font-size:14px}
+.rbar-lbl{width:18px;text-align:right;font-family:var(--mono);color:var(--text3);flex-shrink:0}
+.rbar-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.rbar-fill{height:100%;background:var(--amber);border-radius:3px;transition:width .8s ease}
+.rbar-pct{width:28px;font-family:var(--mono);font-size:14px;color:var(--text4)}
+.review-list{display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.review-item{background:#fff;padding:18px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:120px 1fr;gap:16px}
+.review-item:last-child{border-bottom:none}
+.review-left{display:flex;flex-direction:column;gap:4px}
+.reviewer{font-size:14px;font-weight:600;color:var(--text)}
+.review-date{font-size:14px;color:var(--text4);font-family:var(--mono)}
+.review-product-tag{font-size:14px;color:var(--text4);font-family:var(--mono);padding:2px 6px;border:1px solid var(--border);border-radius:4px;margin-top:4px;display:inline-block}
+.review-right{display:flex;flex-direction:column;gap:6px}
+.review-text{font-size:14px;color:var(--text2);line-height:1.7}
+.review-helpful{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:var(--radius);border:1px solid var(--border);background:#fff;font-size:14px;color:var(--text4);cursor:pointer;transition:all .15s;font-family:var(--font);align-self:flex-start}
+.review-helpful:hover{border-color:var(--brand);color:var(--brand-dk)}
+
+/* ══════════════════════════════════════════
+   ⑤ ABOUT + MAP (컴팩트 2단)
+══════════════════════════════════════════ */
+#about{padding:48px 5%}
+.about-grid{max-width:980px;margin:0 auto;display:grid;grid-template-columns:1fr 340px;gap:32px}
+.info-table{width:100%;border-collapse:collapse;margin-top:12px}
+.info-table tr{border-bottom:1px solid var(--border)}
+.info-table tr:last-child{border-bottom:none}
+.info-table td{padding:10px 0;font-size:14px;vertical-align:top}
+.info-table td:first-child{width:110px;color:var(--text4);font-family:var(--mono);font-size:14px;padding-right:12px;white-space:nowrap}
+.info-table td:last-child{color:var(--text2);font-weight:500}
+.legal-box{background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;font-family:var(--mono);font-size:14px;color:var(--text4);line-height:2.2;margin-top:12px}
+.map-col{display:flex;flex-direction:column;gap:10px}
+.map-box{background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius-lg);height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-decoration:none;transition:all .15s;flex-shrink:0}
+.map-box:hover{border-color:var(--brand);background:var(--brand-bg)}
+.map-addr{font-size:14px;color:var(--text3);text-align:center;line-height:1.6;padding:0 12px}
+.map-cta{font-size:14px;color:var(--brand-dk);font-weight:500;display:flex;align-items:center;gap:4px}
+.distance-card{background:var(--brand-bg);border:1px solid #a7f3d0;border-radius:var(--radius-lg);padding:14px 16px;display:flex;align-items:center;gap:12px}
+.distance-val{font-size:22px;font-weight:700;color:var(--brand-dk);letter-spacing:-.5px}
+.distance-lbl{font-size:14px;color:var(--brand-dk);opacity:.7;font-family:var(--mono)}
+
+/* ══════════════════════════════════════════
+   ⑥ DOCS (증빙서류)
+══════════════════════════════════════════ */
+#docs{background:var(--bg-alt);padding:48px 5%}
+.docs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:20px}
+.doc-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;gap:12px;align-items:flex-start;transition:border-color .15s}
+.doc-card:hover{border-color:var(--brand)}
+.doc-icon-wrap{width:36px;height:36px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.di-reg{background:var(--brand-bg);color:var(--brand-dk)}
+.di-lic{background:#eff6ff;color:var(--blue)}
+.di-cert{background:#fffbeb;color:var(--amber)}
+.di-other{background:var(--bg-subtle);color:var(--text3)}
+.doc-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px}
+.doc-meta{font-family:var(--mono);font-size:14px;color:var(--text4);line-height:1.9}
+.doc-num{font-family:var(--mono);font-size:14px;color:var(--text2);font-weight:500;margin:4px 0}
+.doc-link{display:inline-flex;align-items:center;gap:3px;font-size:14px;color:var(--brand-dk);cursor:pointer;text-decoration:none}
+.doc-link:hover{text-decoration:underline}
+.doc-hash{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;background:var(--brand-bg);color:var(--brand-dk);border:1px solid #a7f3d0;font-size:14px;font-family:var(--mono);margin-top:6px}
+
+/* ══════════════════════════════════════════
+   ⑦ SELLER PROFILE (컴팩트)
+══════════════════════════════════════════ */
+#seller-profile{padding:48px 5%}
+.profile-inner{max-width:980px;margin:0 auto;display:grid;grid-template-columns:240px 1fr;gap:28px;align-items:start}
+.profile-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;text-align:center}
+.profile-av{width:60px;height:60px;border-radius:50%;background:var(--brand-bg);border:2px solid var(--brand-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(--brand-dk)}
+.profile-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px}
+.profile-since{font-family:var(--mono);font-size:14px;color:var(--text4);margin-bottom:14px}
+.credit-wrap{padding-top:14px;border-top:1px solid var(--border)}
+.credit-label{font-family:var(--mono);font-size:14px;color:var(--text4);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.credit-gauge{width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.credit-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--brand),var(--brand-dk));transition:width 1s ease}
+.credit-score-row{display:flex;align-items:baseline;justify-content:center;gap:6px}
+.credit-num{font-size:22px;font-weight:700;letter-spacing:-.5px}
+.credit-grade{padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:14px;font-weight:600}
+.grade-a{background:#d1fae5;color:#065f46}
+.grade-b{background:#dbeafe;color:#1e40af}
+.grade-c{background:#fef3c7;color:#92400e}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-top:12px}
+.stat-cell{background:#fff;padding:12px 8px;text-align:center}
+.stat-cell:hover{background:var(--brand-bg)}
+.stat-v{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.3px}
+.stat-l{font-size:14px;color:var(--text4);font-family:var(--mono);margin-top:1px}
+.profile-badges{display:flex;flex-direction:column;gap:8px}
+.pbadge{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--radius-lg);background:#fff;border:1px solid var(--border)}
+.pbadge-icon{width:32px;height:32px;border-radius:var(--radius);background:var(--brand-bg);border:1px solid #a7f3d0;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--brand-dk)}
+.pbadge-title{font-size:14px;font-weight:600;color:var(--text)}
+.pbadge-sub{font-size:14px;color:var(--text4);margin-top:1px}
+
+/* ── FOOTER ── */
+footer{background:#e8f5ee;color:#1a2e22;padding:36px 5%;font-size:14px}
+.footer-inner{max-width:980px;margin:0 auto}
+.footer-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.footer-brand{display:flex;align-items:center;gap:7px;font-weight:700;font-size:15px;color:#0d2818}
+.footer-links{display:flex;gap:16px}
+.footer-links a{color:#1a9e6a;text-decoration:none;font-size:14px;font-weight:500}
+.footer-links a:hover{color:#0d2818;text-decoration:underline}
+.footer-legal{background:rgba(62,207,142,.06);border:1px solid #a7f3d0;border-radius:var(--radius-lg);padding:14px 18px;font-family:var(--mono);font-size:14px;line-height:2.4;color:#1a2e22;margin-bottom:16px;background:#fff}
+.footer-bottom{font-size:14px;color:#374151;line-height:1.9;border-top:1px solid #a7f3d0;padding-top:14px}
+.oh-proof{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:99px;background:#d1fae5;border:1px solid #6ee7b7;color:#065f46;font-size:14px;font-family:var(--mono);margin-top:10px;font-weight:600}
+
+/* ── AI 상담 패널 ── */
+.chat-fab{position:fixed;right:20px;bottom:20px;width:48px;height:48px;border-radius:50%;background:var(--brand);border:none;cursor:pointer;box-shadow:0 4px 14px rgba(62,207,142,.45);z-index:900;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.chat-fab:hover{background:var(--brand-dk);transform:scale(1.05)}
+.chat-panel{position:fixed;right:20px;bottom:78px;width:340px;height:480px;background:#fff;border-radius:var(--radius-xl);box-shadow:0 8px 32px rgba(0,0,0,.12);display:flex;flex-direction:column;z-index:900;transform:translateY(12px);opacity:0;pointer-events:none;transition:all .18s ease;border:1px solid var(--border)}
+.chat-panel.open{transform:translateY(0);opacity:1;pointer-events:all}
+.chat-header{background:var(--brand);color:#fff;padding:12px 14px;border-radius:var(--radius-xl) var(--radius-xl) 0 0;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.chat-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.9);flex-shrink:0}
+.chat-title{font-size:14px;font-weight:600;flex:1}
+.chat-sub{font-size:14px;opacity:.8;display:block}
+.chat-x{background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;padding:2px;display:flex;align-items:center}
+.chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.msg-ai,.msg-user{max-width:84%;padding:9px 12px;font-size:14px;line-height:1.6;word-break:break-word}
+.msg-ai{background:var(--bg-subtle);color:var(--text);border-radius:3px 10px 10px 10px;align-self:flex-start}
+.msg-user{background:var(--brand);color:#fff;border-radius:10px 3px 10px 10px;align-self:flex-end}
+.chat-chips{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 8px}
+.chip{padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:#fff;font-size:14px;color:var(--text3);cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--brand);color:var(--brand-dk);background:var(--brand-bg)}
+.chat-dock{padding:8px;border-top:1px solid var(--border);display:flex;gap:6px;flex-shrink:0}
+.chat-ta{flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;font-family:var(--font);font-size:14px;color:var(--text);background:var(--bg-subtle);resize:none;outline:none;max-height:64px;transition:border-color .15s}
+.chat-ta:focus{border-color:var(--brand);background:#fff}
+.chat-send{width:30px;height:30px;border-radius:var(--radius);background:var(--brand);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.chat-send:hover{background:var(--brand-dk)}
+
+
+/* ── 배송지 선택 ── */
+.delivery-select-wrap{margin-top:2px}
+.delivery-select{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text2);background:#fff;font-family:var(--font);outline:none;cursor:pointer;transition:border-color .15s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
+.delivery-select:focus{border-color:var(--brand)}
+.delivery-input-wrap{margin-top:5px;display:none}
+.delivery-input{width:100%;padding:6px 8px;border:1px solid var(--brand);border-radius:var(--radius);font-size:14px;color:var(--text);font-family:var(--font);outline:none;background:#fff;transition:border-color .15s}
+.delivery-input::placeholder{color:var(--text4)}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1f29;color:#fff;padding:9px 18px;border-radius:var(--radius-lg);font-size:14px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:nowrap;transition:opacity .3s;pointer-events:none}
+
+/* ── 반응형 ── */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{margin-left:0!important}
+  .layout{flex-direction:column}
+  .product-row{grid-template-columns:100px 1fr;grid-template-rows:auto auto}
+  .pr-order{grid-column:1/-1;border-left:none;border-top:1px solid var(--border)}
+  .about-grid,.profile-inner{grid-template-columns:1fr}
+  .chat-panel{width:calc(100vw - 24px);right:12px}
+  .reviews-header{flex-direction:column;gap:20px}
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <a class="nav-logo" href="#store-header">
+    <div class="nav-logo-icon">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" data-bind="icon.nav"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    </div>
+    <span data-bind="business.name">업체명</span>
+  </a>
+  <span class="nav-sep">/</span>
+  <span class="nav-sub">K-Market</span>
+  <span class="badge-prod">PRODUCTION</span>
+  <div class="nav-spacer"></div>
+  <div class="nav-actions">
+    <div class="nav-distance" id="nav-distance" style="display:none">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span id="nav-dist-val">—</span>
+    </div>
+    <button class="btn btn-primary" onclick="toggleChat()" style="gap:7px;font-size:14px;padding:7px 16px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      AI 상담 · 주문 · 예약
+    </button>
+  </div>
+</nav>
+
+<div class="layout" id="layout">
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar" id="sidebar">
+
+  <div class="sb-sec">
+    <button class="sn active" id="sn-home" onclick="scrollTo('#store-header')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      <span class="sl">스토어 홈</span>
+    </button>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">쇼핑</div>
+    <button class="sn" id="sn-products" onclick="scrollTo('#products')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+      <span class="sl">상품 목록</span>
+      <span class="sbadge green" id="sb-product-count">0</span>
+    </button>
+    <button class="sn" id="sn-cart" onclick="scrollTo('#products')">
+      <span class="si"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
+      <span class="sl">장바구니</span>
+      <span class="sbadge amber" id="sb-cart-count" style="display:none">0</span>
+    </button>
+    <button class="sn" id="sn-chat-btn" onclick="toggleChat()">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+      <span class="sl">AI 상담</span>
+    </button>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">정보</div>
+    <button class="sn" id="sn-reviews" onclick="scrollTo('#reviews')">
+      <span class="si"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="sl">리뷰</span>
+      <span class="sbadge blue" id="sb-review-count">0</span>
+    </button>
+    <button class="sn" id="sn-analytics" onclick="scrollTo('#analytics')">
+      <span class="si"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      <span class="sl">판매 분석</span>
+    </button>
+    <button class="sn" id="sn-about" onclick="scrollTo('#about')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+      <span class="sl">위치 & 정보</span>
+    </button>
+    <button class="sn" id="sn-docs" onclick="scrollTo('#docs')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+      <span class="sl">증빙서류</span>
+    </button>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">판매자</div>
+    <button class="sn" id="sn-profile" onclick="scrollTo('#seller-profile')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+      <span class="sl">신용도</span>
+    </button>
+    <button class="sn" id="sn-openhash">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+      <span class="sl">OpenHash</span>
+      <span class="sbadge green">L4</span>
+    </button>
+  </div>
+
+  <div class="sb-sec sb-sec-last">
+    <a class="sn" href="kmarket_admin_dashboard.html" style="color:var(--amber);font-weight:500">
+      <span class="si"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+      <span class="sl">관리자 대시보드</span>
+      <span class="sbadge amber">ADMIN</span>
+    </a>
+    <a class="sn" href="https://market.gopang.net" style="color:#15803d;font-weight:500">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg></span>
+      <span class="sl">K-Market로</span>
+    </a>
+    <a class="sn" href="https://gopang.net">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      <span class="sl">고팡으로</span>
+    </a>
+  </div>
+
+</aside>
+
+<main class="main">
+
+<!-- ① STORE HEADER -->
+<div id="store-header" class="dot-bg" style="padding:calc(var(--nav-h)+24px) 5% 20px;border-bottom:1px solid var(--border)">
+  <div class="store-header-inner">
+    <div class="store-avatar">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" data-bind="icon.store"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    </div>
+    <div class="store-info">
+      <div class="store-name" data-bind="business.name">업체명</div>
+      <div class="store-meta">
+        <div class="store-rating">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--amber)" stroke="var(--amber)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span data-bind="stats.rating">—</span>
+        </div>
+        <span class="store-meta-sep">·</span>
+        <span>리뷰 <span data-bind="stats.review_count">0</span>개</span>
+        <span class="store-meta-sep">·</span>
+        <span>거래 <span data-bind="seller.transactions">0</span>건</span>
+        <span class="store-meta-sep">·</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span data-bind="business.address">—</span>
+        <span class="store-meta-sep">·</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span data-bind="business.hours">—</span>
+        <span class="store-meta-sep">·</span>
+        <span data-bind="business.phone">—</span>
+      </div>
+    </div>
+    <div class="store-actions">
+      <div class="store-distance" id="store-distance" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        내 위치에서 <strong id="store-dist-val">—</strong>
+      </div>
+      <button class="btn btn-primary" onclick="toggleChat()" style="gap:7px;font-size:14px;padding:8px 18px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        AI 상담 · 주문 · 예약
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ② PRODUCTS -->
+<div id="products" style="padding:20px 5%">
+  <div class="product-list-inner">
+    <!-- 필터 -->
+    <div class="filter-bar" id="filter-bar">
+      <span class="filter-label">분류</span>
+      <button class="filter-chip active" onclick="filterProducts('all',this)">전체</button>
+    </div>
+    <!-- 상품 리스트 -->
+    <div class="product-list reveal" id="product-list">
+      <!-- JS 렌더 -->
+    </div>
+  </div>
+</div>
+
+<hr class="sep"/>
+
+<!-- ③ REVIEWS -->
+<div id="reviews" style="padding:40px 5%;background:var(--bg-alt)">
+  <div class="section-inner">
+    <div class="section-tag reveal">Reviews</div>
+    <h2 class="section-title reveal">구매자 <strong>평가 & 리뷰</strong></h2>
+    <div class="reviews-header reveal">
+      <div class="rating-big">
+        <div class="rating-num" data-bind="stats.rating">—</div>
+        <div class="rating-stars" id="rating-stars-big"></div>
+        <div class="rating-count" data-bind="stats.review_count">0개</div>
+      </div>
+      <div class="rating-bars" id="rating-bars"></div>
+    </div>
+    <div class="review-list reveal" id="review-list"></div>
+    <p class="reveal" style="margin-top:14px;font-size:12px;color:var(--text4);display:flex;align-items:center;gap:5px">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      리뷰 작성 시 GDC 10토큰 지급 · K-Market PDV 기록
+    </p>
+  </div>
+</div>
+
+<hr class="sep"/>
+
+<!-- ④ ABOUT + MAP -->
+<div id="about" style="padding:40px 5%">
+  <div class="section-inner">
+    <div class="section-tag reveal">About</div>
+    <h2 class="section-title reveal">업체 소개 & <strong>위치</strong></h2>
+    <div class="about-grid reveal">
+      <div>
+        <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:14px" data-bind="business.description">업체 소개</p>
+        <table class="info-table">
+          <tr><td>사업자등록번호</td><td data-bind="legal.reg_no">—</td></tr>
+          <tr><td>대표자</td><td data-bind="legal.owner">—</td></tr>
+          <tr><td>주소</td><td data-bind="business.address">—</td></tr>
+          <tr><td>연락처</td><td data-bind="business.phone">—</td></tr>
+          <tr><td>영업시간</td><td data-bind="business.hours">—</td></tr>
+          <tr><td>배송</td><td data-bind="business.delivery">—</td></tr>
+          <tr><td id="license-label-td">영업신고번호</td><td data-bind="legal.license_no">—</td></tr>
+          <tr><td>GPS</td><td style="font-family:var(--mono);font-size:11px"><span data-bind="gps.lat">—</span>, <span data-bind="gps.lng">—</span></td></tr>
+        </table>
+        <div class="legal-box">
+          상호: <span data-bind="business.name">—</span> · 대표: <span data-bind="legal.owner">—</span> · 사업자등록번호: <span data-bind="legal.reg_no">—</span><br>
+          주소: <span data-bind="business.address">—</span> · 연락처: <span data-bind="business.phone">—</span>
+        </div>
+      </div>
+      <div class="map-col">
+        <a class="map-box" id="map-link" href="#" target="_blank">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div class="map-addr" data-bind="business.address">주소 로드 중</div>
+          <span class="map-cta">카카오맵에서 보기 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+        </a>
+        <div class="distance-card" id="distance-card" style="display:none">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brand-dk)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div>
+            <div class="distance-val" id="distance-val">—</div>
+            <div class="distance-lbl">현재 위치에서의 거리</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text4);padding:6px 2px;display:flex;align-items:center;gap:4px">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          OpenHash L4 등록됨 · <span data-bind="openhash.node">PENDING</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="sep"/>
+
+<!-- ⑤ DOCS -->
+<div id="docs" style="padding:40px 5%;background:var(--bg-alt)">
+  <div class="section-inner">
+    <div class="section-tag reveal">Legal Docs</div>
+    <h2 class="section-title reveal">영업허가 & <strong>증빙서류</strong></h2>
+    <p class="reveal" style="font-size:12px;color:var(--text4);margin-bottom:16px">모든 서류는 OpenHash 분산 원장에 등록되어 위변조가 불가능합니다.</p>
+    <div class="docs-grid reveal" id="docs-grid">
+      <div style="text-align:center;padding:32px;color:var(--text4);font-size:12px;background:#fff;border-radius:var(--radius-lg);border:1px dashed var(--border2)">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 8px;display:block"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        등록된 서류가 없습니다
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="sep"/>
+
+<!-- ⑥ SELLER PROFILE -->
+<div id="seller-profile" style="padding:40px 5%">
+  <div class="section-inner">
+    <div class="section-tag reveal">Seller</div>
+    <h2 class="section-title reveal">판매자 <strong>신용도</strong></h2>
+    <div class="profile-inner reveal">
+      <div class="profile-card">
+        <div class="profile-av">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="profile-name" data-bind="business.name">—</div>
+        <div class="profile-since" data-bind="seller.since">—</div>
+        <div class="credit-wrap">
+          <div class="credit-label">PDV 기반 신용도</div>
+          <div class="credit-gauge"><div class="credit-fill" id="credit-fill" style="width:0%"></div></div>
+          <div class="credit-score-row">
+            <span class="credit-num" data-bind="seller.credit_score">—</span>
+            <span class="credit-grade grade-a" data-bind="seller.credit_grade">A</span>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-cell"><div class="stat-v" data-bind="seller.transactions">0</div><div class="stat-l">거래 수</div></div>
+          <div class="stat-cell"><div class="stat-v" data-bind="seller.dispute_rate">0%</div><div class="stat-l">분쟁률</div></div>
+          <div class="stat-cell"><div class="stat-v" data-bind="seller.response_time">즉시</div><div class="stat-l">응답속도</div></div>
+        </div>
+      </div>
+      <div class="profile-badges">
+        <div class="pbadge"><div class="pbadge-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="pbadge-title">OpenHash 거래 증빙</div><div class="pbadge-sub">모든 거래가 분산 원장에 불변 기록됩니다</div></div></div>
+        <div class="pbadge"><div class="pbadge-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div><div class="pbadge-title">PDV 신용 평가</div><div class="pbadge-sub">실거래 이력 기반 실시간 신용도 산출</div></div></div>
+        <div class="pbadge"><div class="pbadge-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="pbadge-title">법적 요건 충족</div><div class="pbadge-sub" data-bind="legal.license_label_full">사업자등록 및 관련 허가 완료</div></div></div>
+        <div class="pbadge"><div class="pbadge-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><div><div class="pbadge-title">GDC 결제</div><div class="pbadge-sub">고팡 GDC 디지털 화폐 결제 지원</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="sep"/>
+
+<!-- ── ANALYTICS ── -->
+<div id="analytics" style="padding:40px 5%;background:var(--bg)">
+  <div class="section-inner">
+    <div class="section-tag reveal">Analytics</div>
+    <h2 class="section-title reveal">판매 현황 & <strong>시장 분석</strong></h2>
+    <p class="reveal" style="font-size:14px;color:var(--text3);margin-bottom:28px">
+      실시간 판매 데이터와 시장 비교 분석입니다. K-Market AI가 자동 수집·갱신합니다.
+    </p>
+
+    <!-- 상단 KPI 카드 4종 -->
+    <div class="analytics-kpi-grid reveal" id="kpi-grid"></div>
+
+    <!-- 차트 2단 그리드 -->
+    <div class="analytics-chart-grid reveal" style="margin-top:24px">
+
+      <!-- 판매량 트렌드 -->
+      <div class="analytics-card">
+        <div class="analytics-card-header">
+          <div>
+            <div class="analytics-card-title">판매량 트렌드</div>
+            <div class="analytics-card-sub">최근 12개월 월별 판매량 및 추세선</div>
+          </div>
+          <div class="period-tabs" id="sales-period-tabs">
+            <button class="ptab active" onclick="switchPeriod('sales',7,this)">7일</button>
+            <button class="ptab" onclick="switchPeriod('sales',30,this)">30일</button>
+            <button class="ptab" onclick="switchPeriod('sales',90,this)">90일</button>
+          </div>
+        </div>
+        <canvas id="chart-sales" height="180"></canvas>
+      </div>
+
+      <!-- 가격 비교 -->
+      <div class="analytics-card">
+        <div class="analytics-card-header">
+          <div>
+            <div class="analytics-card-title">동종업체 가격 비교</div>
+            <div class="analytics-card-sub">유사 상품 대비 우리 가격 포지션</div>
+          </div>
+          <div style="font-size:12px;color:var(--brand-dk);font-family:var(--mono);padding:3px 8px;background:var(--brand-bg);border-radius:99px;border:1px solid #a7f3d0">AI 수집</div>
+        </div>
+        <canvas id="chart-price" height="180"></canvas>
+      </div>
+
+      <!-- 가성비 평가 트렌드 -->
+      <div class="analytics-card">
+        <div class="analytics-card-header">
+          <div>
+            <div class="analytics-card-title">소비자 가성비 평가</div>
+            <div class="analytics-card-sub">리뷰 기반 가성비 지수 추세</div>
+          </div>
+          <div class="analytics-badge-val" id="vfm-latest">—</div>
+        </div>
+        <canvas id="chart-vfm" height="180"></canvas>
+      </div>
+
+      <!-- 상품별 매출 비중 -->
+      <div class="analytics-card">
+        <div class="analytics-card-header">
+          <div>
+            <div class="analytics-card-title">상품별 매출 비중</div>
+            <div class="analytics-card-sub">이번 달 상품 카테고리별 비율</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <canvas id="chart-mix" width="160" height="160" style="flex-shrink:0"></canvas>
+          <div id="chart-mix-legend" style="flex:1;font-size:13px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div style="width:20px;height:20px;border-radius:4px;background:var(--brand);display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></div>
+        <span data-bind="business.name">업체명</span>
+        <span style="font-weight:400;color:#4b7a5e;font-size:12px">on K-Market</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://gopang.net" target="_blank">gopang.net</a>
+        <a href="https://market.gopang.net" target="_blank">K-Market</a>
+      </div>
+    </div>
+    <div class="footer-legal" id="footer-legal">
+      상호: <span data-bind="business.name">—</span> &nbsp;|&nbsp; 대표: <span data-bind="legal.owner">—</span> &nbsp;|&nbsp; 사업자등록번호: <span data-bind="legal.reg_no">—</span><br>
+      주소: <span data-bind="business.address">—</span> &nbsp;|&nbsp; 연락처: <span data-bind="business.phone">—</span><br>
+      <span data-bind="legal.license_label">영업신고번호</span>: <span data-bind="legal.license_no">—</span>
+    </div>
+    <div class="footer-bottom">
+      모든 거래는 OpenHash 분산 원장에 불변 기록됩니다. AI 상담 결과는 참고용이며 법적 효력을 갖지 않습니다.<br>
+      © 2026 K-Market · AI City Inc. · Powered by Gopang Ecosystem
+      <div><span class="oh-proof"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>OpenHash <span data-bind="openhash.node">PENDING</span></span></div>
+    </div>
+  </div>
+</footer>
+
+</main>
+</div>
+
+<!-- 장바구니 바 (하단 sticky) -->
+<div class="cart-bar" id="cart-bar">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+  <div class="cart-items-summary" id="cart-summary">장바구니가 비어 있습니다</div>
+  <div>
+    <div class="cart-total-label">합계</div>
+    <div class="cart-total" id="cart-total">—</div>
+  </div>
+  <button class="btn btn-primary" onclick="checkout()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    GDC 결제
+  </button>
+  <button class="btn" onclick="clearCart()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+    비우기
+  </button>
+</div>
+
+<!-- AI 상담 패널 -->
+<button class="chat-fab" id="chat-fab" onclick="toggleChat()">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+</button>
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-header">
+    <span class="chat-dot"></span>
+    <div><div class="chat-title" data-bind="business.name">AI 상담원</div><span class="chat-sub">온라인 · 즉시 응답</span></div>
+    <button class="chat-x" onclick="toggleChat()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-chips" id="chat-chips">
+    <button class="chip" onclick="sendChip('상품 문의')">상품 문의</button>
+    <button class="chip" onclick="sendChip('배송 조회')">배송 조회</button>
+    <button class="chip" onclick="sendChip('주문·예약')">주문·예약</button>
+    <button class="chip" onclick="sendChip('환불 정책')">환불 정책</button>
+  </div>
+  <div class="chat-dock">
+    <textarea class="chat-ta" id="chat-input" rows="1" placeholder="무엇이든 물어보세요…"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,64)+'px'"></textarea>
+    <button class="chat-send" onclick="sendChat()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// K-Market 판매자 사이트 템플릿 v3.0
+// DeepSeek은 아래 SELLER_DATA만 JSON으로 채워넣습니다.
+// ══════════════════════════════════════════════════════
+const SELLER_DATA = {
+  business:{
+    name:"제주 흑돼지 농장", tagline:"제주에서 직접 키운 무항생제 흑돼지",
+    description:"제주시 한림읍에서 20년간 운영해온 흑돼지 전문 농장입니다. 무항생제 인증을 받았으며 직접 도축하여 신선하게 배송합니다.",
+    address:"제주특별자치도 제주시 한림읍 한림로 123",
+    phone:"064-123-4567", hours:"월~토 09:00~17:00",
+    delivery:"택배 (익일 출고)", category:"축산물",
+  },
+  legal:{
+    owner:"홍길동", reg_no:"616-12-34567",
+    license_label:"축산물판매업신고번호",
+    license_label_full:"사업자등록 및 축산물판매업 신고 완료",
+    license_no:"제주-2024-0123",
+  },
+  gps:{ lat:33.3846, lng:126.2638, label:"제주시 한림읍" },
+  products:[
+    {id:"pork-belly",name:"흑돼지 삼겹살",desc:"제주 흑돼지 삼겹살 신선 냉장. 마블링이 풍부하고 고소한 맛이 특징입니다.",price:35000,unit:"1kg",category:"육류",origin:"제주도",stock:"in",image_url:""},
+    {id:"pork-neck",name:"흑돼지 목살",desc:"부드럽고 풍부한 맛의 흑돼지 목살. 구이용으로 최적입니다.",price:30000,unit:"1kg",category:"육류",origin:"제주도",stock:"in",image_url:""},
+    {id:"pork-ribs",name:"흑돼지 갈비",desc:"두툼한 흑돼지 갈비. 찜이나 구이 모두 맛있습니다.",price:40000,unit:"1kg",category:"육류",origin:"제주도",stock:"low",image_url:""},
+  ],
+  reviews:[
+    {reviewer:"김*영",date:"2026.04.12",rating:5,product:"흑돼지 삼겹살",text:"정말 맛있습니다. 일반 삼겹살과 차원이 다른 고소함이 있어요. 가족들 모두 좋아해서 재주문했습니다.",helpful:14},
+    {reviewer:"박*수",date:"2026.03.28",rating:5,product:"흑돼지 목살",text:"신선도가 정말 좋네요. 냉장 포장도 꼼꼼하게 잘 됐고, 맛도 훌륭합니다. 강력 추천!",helpful:9},
+    {reviewer:"이*진",date:"2026.05.02",rating:4,product:"흑돼지 갈비",text:"갈비찜으로 해먹었는데 아주 맛있었습니다. 다음엔 삼겹살도 주문해봐야겠어요.",helpful:6},
+  ],
+  rating_dist:{5:70,4:20,3:7,2:2,1:1},
+  stats:{product_count:3,rating:"4.7",transactions:"89",delivery:"택배 (익일 출고)",review_count:"3"},
+  seller:{since:"K-Market 입점 2026",credit_score:"890",credit_grade:"A",credit_pct:89,transactions:"89",dispute_rate:"0%",response_time:"즉시"},
+  docs:[
+    {title:"사업자등록증",type:"registration",issued_by:"제주세무서",issued_date:"2020-05-10",number:"616-12-34567",file_url:""},
+    {title:"축산물판매업 신고증",type:"license",issued_by:"제주시",issued_date:"2020-06-01",number:"제주-2020-0456",file_url:""},
+  ],
+  mode: "product",  // "product" | "service" | "delivery" | "hybrid"
+  openhash:{node:"KR_JEJU_L4"},
+  chat:{
+    responses:{
+      "상품":"흑돼지 삼겹살(35,000원/kg), 목살(30,000원/kg), 갈비(40,000원/kg)를 판매합니다.",
+      "배송":"주문 확인 후 당일 출고, 익일 도착합니다. 냉장 포장으로 신선하게 배송됩니다.",
+      "가격":"삼겹살 35,000원, 목살 30,000원, 갈비 40,000원입니다. 2kg 이상 주문 시 무료배송.",
+      "주문":"상품 옆 수량을 선택 후 'AI 상담 · 주문 · 예약' 버튼을 눌러주세요.",
+      "환불":"수령 후 24시간 이내 품질 문제 시 전액 환불해 드립니다. 064-123-4567로 연락주세요.",
+    },
+    default:"감사합니다. 더 자세한 문의는 064-123-4567로 연락 주시면 빠르게 답변드리겠습니다.",
+  },
+};
+
+// ── 장바구니 상태 ────────────────────────────────────
+const _cart = {}; // { productId: qty }
+
+// ── data-bind ────────────────────────────────────────
+function bindData(d) {
+  const flat = {};
+  (function flatten(obj,p){ for(const k in obj){ const key=p?p+'.'+k:k; if(typeof obj[k]==='object'&&obj[k]!==null&&!Array.isArray(obj[k])) flatten(obj[k],key); else flat[key]=obj[k]; } })(d,'');
+  document.querySelectorAll('[data-bind]').forEach(el=>{
+    const v=flat[el.getAttribute('data-bind')];
+    if(v!==undefined) el.textContent=v;
+  });
+}
+
+// ── 별점 SVG ─────────────────────────────────────────
+function starSVG(filled,size=13){
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled?'var(--amber)':'none'}" stroke="var(--amber)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+}
+function starsHTML(r,size=13){ return Array.from({length:5},(_,i)=>starSVG(i<Math.round(r),size)).join(''); }
+
+// ── 상품 목록 렌더 ────────────────────────────────────
+// ── 모드별 UI 헬퍼 ───────────────────────────────────
+const MODE_CFG = {
+  product: {
+    stockBadge:  true,
+    originLabel: true,
+    qtyInput:    true,
+    priceTotal:  true,
+    deliveryRow: true,
+    deliveryOpts:[
+      {val:'',    txt:'🚚 배송지 선택'},
+      {val:'current', txt:'📍 현재 위치'},
+      {val:'home',    txt:'🏠 주소지 (집/회사)'},
+      {val:'new',     txt:'📦 새로운 장소'},
+      {val:'gift',    txt:'💌 선물 (받는 분 주소)'},
+    ],
+    ctaIcon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
+    ctaText: (p) => p.stock==='out' ? '품절' : 'AI 상담 · 주문',
+    ctaAction: (p) => `buyNow('${p.id}',${p.price},'${p.name}')`,
+    imgIcon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+    imgLabel: '상품 이미지 없음',
+    infoExtra: (p) => p.duration ? `<span class="pr-origin"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${p.duration}</span>` : '',
+  },
+  service: {
+    stockBadge:  false,
+    originLabel: false,
+    qtyInput:    false,
+    priceTotal:  false,
+    deliveryRow: false,
+    deliveryOpts: null,
+    ctaIcon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+    ctaText: (p) => p.available===false ? '예약 불가' : 'AI 상담 · 예약',
+    ctaAction: (p) => `toggleChat()`,
+    imgIcon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+    imgLabel: '서비스 이미지 없음',
+    infoExtra: (p) => p.duration ? `<span class="pr-origin"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>소요시간: ${p.duration}</span>` : '',
+  },
+  delivery: {
+    stockBadge:  false,
+    originLabel: false,
+    qtyInput:    true,
+    priceTotal:  true,
+    deliveryRow: true,
+    deliveryOpts:[
+      {val:'',        txt:'📍 배달 위치 선택'},
+      {val:'current', txt:'📍 현재 위치 (GPS)'},
+      {val:'home',    txt:'🏠 자주 가는 주소'},
+      {val:'new',     txt:'📦 직접 입력'},
+    ],
+    ctaIcon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    ctaText: (p) => p.stock==='out' ? '불가' : 'AI 상담 · 즉시 호출',
+    ctaAction: (p) => `buyNow('${p.id}',${p.price},'${p.name}')`,
+    imgIcon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+    imgLabel: '차량/경로 이미지 없음',
+    infoExtra: (p) => p.eta ? `<span class="pr-origin"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>예상 ${p.eta}</span>` : '',
+  },
+  hybrid: {
+    stockBadge:  true,
+    originLabel: false,
+    qtyInput:    true,
+    priceTotal:  true,
+    deliveryRow: true,
+    deliveryOpts:[
+      {val:'',        txt:'🚚 수령 방법 선택'},
+      {val:'current', txt:'📍 배달 (현재 위치)'},
+      {val:'home',    txt:'🏠 배달 (저장 주소)'},
+      {val:'new',     txt:'📦 배달 (새 주소)'},
+      {val:'visit',   txt:'🏪 직접 방문 포장'},
+    ],
+    ctaIcon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+    ctaText: (p) => p.stock==='out' ? '품절' : 'AI 상담 · 주문 · 예약',
+    ctaAction: (p) => `buyNow('${p.id}',${p.price},'${p.name}')`,
+    imgIcon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+    imgLabel: '메뉴 이미지 없음',
+    infoExtra: (p) => p.spicy !== undefined ? `<span class="pr-origin">🌶 ${p.spicy ? '매운맛' : '순한맛'}</span>` : '',
+  },
+};
+
+function renderProducts(filter='all'){
+  const list = document.getElementById('product-list');
+  if(!list) return;
+  const mode = SELLER_DATA.mode || 'product';
+  const cfg  = MODE_CFG[mode] || MODE_CFG.product;
+  const items = filter==='all' ? SELLER_DATA.products : SELLER_DATA.products.filter(p=>p.category===filter);
+  if(!items.length){ list.innerHTML='<div style="padding:32px;text-align:center;color:var(--text4);font-size:14px;">등록된 항목이 없습니다.</div>'; return; }
+
+  list.innerHTML = items.map(p => {
+    const isUnavailable = p.stock==='out' || p.available===false;
+    const priceStr = p.price ? Number(p.price).toLocaleString()+'원' : '가격 문의';
+
+    // 재고/가용 배지
+    const stockBadge = cfg.stockBadge
+      ? `<span class="pr-badge ${p.stock==='in'?'badge-in':p.stock==='low'?'badge-low':'badge-out'}">${p.stock==='in'?'재고 있음':p.stock==='low'?'재고 부족':'품절'}</span>`
+      : (p.available===false ? `<span class="pr-badge badge-out">예약 불가</span>` : `<span class="pr-badge badge-in">이용 가능</span>`);
+
+    // 원산지
+    const originRow = cfg.originLabel && p.origin
+      ? `<span class="pr-origin"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>원산지: ${p.origin}</span>`
+      : '';
+
+    // 수량 입력
+    const qtyBlock = cfg.qtyInput ? `
+      <div class="qty-row">
+        <button class="qty-btn" onclick="changeQty('${p.id}',-1)">−</button>
+        <input class="qty-input" id="qty-${p.id}" type="number" value="1" min="1" max="999"
+          oninput="updatePrice('${p.id}',${p.price||0})"/>
+        <button class="qty-btn" onclick="changeQty('${p.id}',1)">+</button>
+      </div>
+      <div class="pr-price-total" id="total-${p.id}">합계: <span>${priceStr}</span></div>` : '';
+
+    // 배송/방문 정보 행
+    const deliveryBlock = cfg.deliveryRow ? `
+      <div class="pr-ship">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        ${SELLER_DATA.business.delivery||''}
+        ${mode==='product' && Number(p.price)>=50000 ? '<span class="pr-ship-free">무료배송</span>' : ''}
+      </div>
+      <div class="delivery-select-wrap">
+        <select class="delivery-select" id="delivery-${p.id}" onchange="onDeliveryChange('${p.id}',this.value)">
+          ${(cfg.deliveryOpts||[]).map(o=>`<option value="${o.val}">${o.txt}</option>`).join('')}
+        </select>
+        <input class="delivery-input" id="delivery-addr-${p.id}" type="text" placeholder="주소 입력" style="display:none"/>
+        <input class="delivery-input" id="delivery-name-${p.id}" type="text" placeholder="받는 분 성함" style="margin-top:4px;display:none"/>
+      </div>` : (mode==='service' ? `
+      <div class="pr-ship">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        ${SELLER_DATA.business.address||'방문 서비스'}
+      </div>` : '');
+
+    return `
+  <div class="product-row" id="row-${p.id}">
+    <div class="pr-img" onclick="toggleChat()">
+      ${p.image_url
+        ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy"/>`
+        : `<div class="pr-img-placeholder">${cfg.imgIcon}<span style="font-size:11px;margin-top:4px">${cfg.imgLabel}</span></div>`}
+    </div>
+    <div class="pr-info">
+      <div class="pr-name">${p.name}</div>
+      <div class="pr-meta">
+        ${stockBadge}
+        ${originRow}
+        ${cfg.infoExtra(p)}
+      </div>
+      <div class="pr-desc">${p.desc||''}</div>
+      <div class="pr-rating-row" style="margin-top:6px">${starsHTML(4.8,12)}<span style="margin-left:4px;font-family:var(--mono)">4.8</span></div>
+    </div>
+    <div class="pr-order">
+      <div>
+        <div class="pr-price">${priceStr}</div>
+        <div class="pr-price-unit">${p.unit ? '/ '+p.unit : ''}</div>
+      </div>
+      ${qtyBlock}
+      ${deliveryBlock}
+      <button class="add-cart" onclick="${cfg.ctaAction(p)}" ${isUnavailable?'disabled':''} style="font-size:14px;padding:10px 8px;gap:7px;margin-top:auto">
+        ${cfg.ctaIcon}
+        ${cfg.ctaText(p)}
+      </button>
+    </div>
+  </div>`;
+  }).join('');
+
+  updateOrderSelect();
+}
+
+function changeQty(id, d){
+  const inp = document.getElementById('qty-'+id);
+  if(!inp) return;
+  const p = SELLER_DATA.products.find(p=>p.id==id);
+  inp.value = Math.max(1, parseInt(inp.value||1)+d);
+  updatePrice(id, p?.price||0);
+}
+function updatePrice(id, price){
+  const inp = document.getElementById('qty-'+id);
+  const tot = document.getElementById('total-'+id);
+  if(!inp||!tot) return;
+  const qty = Math.max(1,parseInt(inp.value)||1);
+  inp.value = qty;
+  tot.innerHTML = `합계: <span>${(price*qty).toLocaleString()}원</span>`;
+  if(_cart[id]) { _cart[id].qty=qty; updateCartBar(); }
+}
+function updateOrderSelect(){
+  const sel = document.getElementById('order-product');
+  if(!sel) return;
+  sel.innerHTML='<option value="">상품 선택</option>'
+    +SELLER_DATA.products.map(p=>`<option value="${p.id}" data-price="${p.price}">${p.name} — ${Number(p.price).toLocaleString()}원</option>`).join('');
+}
+
+// ── 장바구니 ─────────────────────────────────────────
+function addCart(id, price, name){
+  const qty = parseInt(document.getElementById('qty-'+id)?.value||1);
+  if(_cart[id]) _cart[id].qty+=qty;
+  else _cart[id]={price,name,qty};
+  updateCartBar();
+  // 사이드바 장바구니 뱃지
+  const total = Object.values(_cart).reduce((a,i)=>a+i.qty,0);
+  const badge = document.getElementById('sb-cart-count');
+  if(badge){ badge.textContent=total; badge.style.display=total?'':'none'; }
+  showToast(`🛒 "${name}" ${qty}개 담았습니다`);
+}
+function buyNow(id, price, name){
+  addCart(id, price, name);
+  checkout();
+}
+function clearCart(){ Object.keys(_cart).forEach(k=>delete _cart[k]); updateCartBar(); }
+function updateCartBar(){
+  const items=Object.values(_cart);
+  const bar=document.getElementById('cart-bar');
+  const sum=document.getElementById('cart-summary');
+  const tot=document.getElementById('cart-total');
+  if(!bar) return;
+  if(!items.length){ bar.classList.remove('visible'); return; }
+  bar.classList.add('visible');
+  const totalQty=items.reduce((a,i)=>a+i.qty,0);
+  const totalAmt=items.reduce((a,i)=>a+i.price*i.qty,0);
+  sum.textContent=`${items.length}개 상품 · 총 ${totalQty}개`;
+  tot.textContent=totalAmt.toLocaleString()+'원';
+}
+function checkout(){
+  const items=Object.values(_cart);
+  if(!items.length){ showToast('장바구니가 비어 있습니다'); return; }
+  const total=items.reduce((a,i)=>a+i.price*i.qty,0);
+  showToast(`✅ GDC 결제 처리 중 · ${total.toLocaleString()}원 · OpenHash 기록 중…`);
+}
+
+// ── 카테고리 필터 ────────────────────────────────────
+function renderFilters(){
+  const cats=[...new Set(SELLER_DATA.products.map(p=>p.category).filter(Boolean))];
+  const bar=document.getElementById('filter-bar');
+  if(!bar||!cats.length) return;
+  cats.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='filter-chip'; b.textContent=c;
+    b.onclick=()=>filterProducts(c,b);
+    bar.appendChild(b);
+  });
+}
+function filterProducts(cat,btn){
+  document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+  btn?.classList.add('active');
+  renderProducts(cat);
+}
+
+// ── 리뷰 렌더 ─────────────────────────────────────────
+function renderReviews(){
+  const bars=document.getElementById('rating-bars');
+  if(bars) bars.innerHTML=[5,4,3,2,1].map(n=>`
+    <div class="rbar-row">
+      <span class="rbar-lbl">${n}★</span>
+      <div class="rbar-track"><div class="rbar-fill" style="width:${SELLER_DATA.rating_dist[n]||0}%"></div></div>
+      <span class="rbar-pct">${SELLER_DATA.rating_dist[n]||0}%</span>
+    </div>`).join('');
+
+  const bigStars=document.getElementById('rating-stars-big');
+  if(bigStars) bigStars.innerHTML=starsHTML(parseFloat(SELLER_DATA.stats.rating)||0,14);
+
+  const list=document.getElementById('review-list');
+  if(!list) return;
+  if(!SELLER_DATA.reviews.length){
+    list.innerHTML='<div style="padding:24px;text-align:center;color:var(--text4);font-size:12px;">아직 리뷰가 없습니다.</div>';
+    return;
+  }
+  list.innerHTML=SELLER_DATA.reviews.map(r=>`
+    <div class="review-item">
+      <div class="review-left">
+        <div class="reviewer">${r.reviewer||'익명'}</div>
+        <div style="display:flex;gap:2px;margin:3px 0">${starsHTML(r.rating||5,12)}</div>
+        <div class="review-date">${r.date||''}</div>
+        ${r.product?`<span class="review-product-tag">${r.product}</span>`:''}
+      </div>
+      <div class="review-right">
+        <div class="review-text">${r.text||''}</div>
+        <button class="review-helpful">👍 도움이 돼요 ${r.helpful||0}</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── 증빙서류 렌더 ─────────────────────────────────────
+function renderDocs(){
+  const grid=document.getElementById('docs-grid');
+  if(!grid||!SELLER_DATA.docs?.length) return;
+  const ic={registration:'di-reg',license:'di-lic',certification:'di-cert',other:'di-other'};
+  const svg={
+    registration:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+    license:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+    certification:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>`,
+    other:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`,
+  };
+  grid.innerHTML=SELLER_DATA.docs.map(d=>`
+    <div class="doc-card">
+      <div class="doc-icon-wrap ${ic[d.type]||'di-other'}">${svg[d.type]||svg.other}</div>
+      <div style="flex:1">
+        <div class="doc-title">${d.title}</div>
+        <div class="doc-meta">발급기관: ${d.issued_by||'—'} · 발급일: ${d.issued_date||'—'}</div>
+        <div class="doc-num">${d.number||''}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${d.file_url?`<a class="doc-link" href="${d.file_url}" target="_blank"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>원본 보기</a>`:'<span style="font-size:11px;color:var(--text4)">원본 미첨부</span>'}
+          <span class="doc-hash"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>OpenHash</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── 배송지 선택 ──────────────────────────────────────
+function onDeliveryChange(id, val){
+  const addrInput = document.getElementById('delivery-addr-'+id);
+  const nameInput = document.getElementById('delivery-name-'+id);
+  if(!addrInput) return;
+
+  // 모두 숨기기
+  addrInput.style.display = 'none';
+  if(nameInput) nameInput.style.display = 'none';
+
+  if(val === 'current'){
+    addrInput.style.display = 'block';
+    addrInput.value = '위치 확인 중…';
+    addrInput.readOnly = true;
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        addrInput.value = `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+      }, ()=>{ addrInput.value = '위치 권한 없음 — 직접 입력'; addrInput.readOnly=false; }, {timeout:5000});
+    } else {
+      addrInput.value = '위치 미지원 — 직접 입력'; addrInput.readOnly=false;
+    }
+  } else if(val === 'home'){
+    addrInput.style.display = 'block';
+    addrInput.readOnly = false;
+    addrInput.placeholder = '집 또는 회사 주소';
+    // 저장된 주소지가 있으면 자동 입력
+    const saved = localStorage.getItem('kmarket_home_addr');
+    if(saved) addrInput.value = saved;
+  } else if(val === 'new'){
+    addrInput.style.display = 'block';
+    addrInput.readOnly = false;
+    addrInput.value = '';
+    addrInput.placeholder = '배송받을 주소를 입력하세요';
+  } else if(val === 'gift'){
+    addrInput.style.display = 'block';
+    addrInput.readOnly = false;
+    addrInput.value = '';
+    addrInput.placeholder = '받는 분 주소';
+    if(nameInput){ nameInput.style.display='block'; nameInput.placeholder='받는 분 성함'; }
+  }
+
+  // 주소지 저장 (home 선택 후 입력 시)
+  if(val === 'home' && addrInput){
+    addrInput.addEventListener('blur', ()=>{
+      if(addrInput.value) localStorage.setItem('kmarket_home_addr', addrInput.value);
+    }, {once:true});
+  }
+}
+
+// ── 거리 계산 ─────────────────────────────────────────
+function calcDist(lat1,lng1,lat2,lng2){
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function fmtDist(km){ return km<1?Math.round(km*1000)+'m':km<10?km.toFixed(1)+'km':Math.round(km)+'km'; }
+function setupDistance(){
+  const {lat,lng}=SELLER_DATA.gps||{};
+  if(!lat||!lng||!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const d=calcDist(pos.coords.latitude,pos.coords.longitude,lat,lng);
+    const txt=fmtDist(d);
+    const navD=document.getElementById('nav-distance');
+    const navV=document.getElementById('nav-dist-val');
+    const storeD=document.getElementById('store-distance');
+    const distCard=document.getElementById('distance-card');
+    const distVal=document.getElementById('distance-val');
+    if(navD){ navD.style.display='flex'; navV.textContent=txt; }
+    if(storeD){ storeD.style.display='flex'; document.getElementById('store-dist-val').textContent=txt; }
+    if(distCard){ distCard.style.display='flex'; distVal.textContent=txt; }
+  },()=>{},{timeout:6000});
+}
+
+// ── 신용도 ───────────────────────────────────────────
+function renderCreditGauge(){
+  const fill=document.getElementById('credit-fill');
+  if(fill) setTimeout(()=>fill.style.width=(SELLER_DATA.seller.credit_pct||0)+'%',400);
+}
+
+// ── 맵 링크 ──────────────────────────────────────────
+function setupMap(){
+  const link=document.getElementById('map-link');
+  if(link&&SELLER_DATA.business.address)
+    link.href='https://map.kakao.com/link/search/'+encodeURIComponent(SELLER_DATA.business.address);
+}
+
+// ── 사이드바 스크롤 & active ─────────────────────────
+function scrollTo(selector){
+  document.querySelector(selector)?.scrollIntoView({behavior:'smooth'});
+  // active 상태 갱신
+  document.querySelectorAll('.sn').forEach(n=>n.classList.remove('active'));
+  const map = {'#store-header':'sn-home','#products':'sn-products','#reviews':'sn-reviews','#analytics':'sn-analytics','#about':'sn-about','#docs':'sn-docs','#seller-profile':'sn-profile'};
+  const id = map[selector];
+  if(id) document.getElementById(id)?.classList.add('active');
+}
+function updateSidebarBadges(){
+  // 상품 수
+  const pc = document.getElementById('sb-product-count');
+  if(pc) pc.textContent = SELLER_DATA.products.length;
+  // 리뷰 수
+  const rc = document.getElementById('sb-review-count');
+  if(rc) rc.textContent = SELLER_DATA.reviews.length;
+}
+// 장바구니 담을 때마다 사이드바 뱃지 갱신
+const _origUpdateCartBar = typeof updateCartBar === 'function' ? updateCartBar : null;
+
+// ── AI 상담 ──────────────────────────────────────────
+let _chatOpen=false;
+function toggleChat(){
+  _chatOpen=!_chatOpen;
+  document.getElementById('chat-panel').classList.toggle('open',_chatOpen);
+  if(_chatOpen&&!document.getElementById('chat-messages').children.length)
+    appendMsg('ai',`안녕하세요! ${SELLER_DATA.business.name} AI 상담원입니다. 상품 문의, 주문, 배송 등 무엇이든 도와드리겠습니다 😊`);
+}
+function appendMsg(role,text){
+  const wrap=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className=role==='ai'?'msg-ai':'msg-user';
+  div.textContent=text;
+  wrap.appendChild(div);
+  wrap.scrollTop=wrap.scrollHeight;
+}
+function sendChat(){
+  const inp=document.getElementById('chat-input');
+  const txt=inp.value.trim(); if(!txt) return;
+  appendMsg('user',txt); inp.value=''; inp.style.height='auto';
+  setTimeout(()=>appendMsg('ai',getReply(txt)),500);
+}
+function sendChip(t){ document.getElementById('chat-input').value=t; sendChat(); }
+function getReply(t){
+  const r=SELLER_DATA.chat.responses;
+  for(const k in r) if(t.includes(k)) return r[k];
+  return SELLER_DATA.chat.default;
+}
+
+// ── Toast ─────────────────────────────────────────────
+function showToast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),300); },2500);
+}
+
+// ── Analytics 차트 ────────────────────────────────────
+function initAnalytics(){
+  if(typeof Chart === 'undefined') return;
+  Chart.defaults.font.family = "'Inter','Noto Sans KR',sans-serif";
+  Chart.defaults.font.size   = 12;
+  Chart.defaults.color       = '#6b7280';
+
+  const d = SELLER_DATA.analytics || _generateSampleAnalytics();
+
+  // KPI 카드
+  renderKPICards(d);
+
+  // 차트들
+  renderSalesChart(d.sales_monthly);
+  renderPriceChart(d.price_compare);
+  renderVFMChart(d.vfm_trend);
+  renderMixChart(d.product_mix);
+}
+
+function _generateSampleAnalytics(){
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const base = [42,38,55,61,58,72,80,76,88,92,85,98];
+  return {
+    kpis:[
+      {label:'이번달 매출',  val:'₩2,840,000', change:+12.3, unit:'전월 대비'},
+      {label:'판매 건수',    val:'89건',        change:+8.1,  unit:'전월 대비'},
+      {label:'평균 주문금액', val:'₩31,910',    change:-2.4,  unit:'전월 대비'},
+      {label:'재구매율',     val:'34.2%',       change:+5.7,  unit:'전월 대비'},
+    ],
+    sales_monthly:{
+      labels: months,
+      data:   base,
+      trend:  base.map((_,i)=>32 + i*5.8),  // 추세선
+    },
+    price_compare:{
+      labels:['최저가','우리','평균','최고가'],
+      data:  [28000,35000,38000,52000],
+      ours:  1,
+    },
+    vfm_trend:{
+      labels: months,
+      data:   [3.8,3.9,4.0,3.8,4.1,4.2,4.3,4.1,4.4,4.5,4.4,4.6],
+    },
+    product_mix:{
+      labels: SELLER_DATA.products.length
+        ? SELLER_DATA.products.map(p=>p.name)
+        : ['삼겹살','목살','갈비'],
+      data: SELLER_DATA.products.length
+        ? SELLER_DATA.products.map((_,i)=>[45,32,23][i]||Math.round(100/SELLER_DATA.products.length))
+        : [45,32,23],
+    },
+  };
+}
+
+function renderKPICards(d){
+  const grid = document.getElementById('kpi-grid');
+  if(!grid) return;
+  grid.innerHTML = (d.kpis||[]).map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-card-label">${k.label}</div>
+      <div class="kpi-card-val">${k.val}</div>
+      <div class="kpi-card-change ${k.change>=0?'up':'down'}">
+        ${k.change>=0?'▲':'▼'} ${Math.abs(k.change)}% <span style="font-weight:400;color:var(--text4)">${k.unit}</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderSalesChart(d){
+  const ctx = document.getElementById('chart-sales');
+  if(!ctx||!d) return;
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:d.labels,
+      datasets:[
+        {
+          label:'판매량(건)',
+          data:d.data,
+          backgroundColor:'rgba(62,207,142,.25)',
+          borderColor:'rgba(62,207,142,.8)',
+          borderWidth:1.5,
+          borderRadius:3,
+          order:2,
+        },
+        {
+          label:'추세선',
+          data:d.trend,
+          type:'line',
+          borderColor:'#f59e0b',
+          borderWidth:2,
+          pointRadius:0,
+          tension:.4,
+          fill:false,
+          order:1,
+        },
+      ],
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top',labels:{boxWidth:10,font:{size:11}}},tooltip:{mode:'index'}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'#f3f4f6'},ticks:{font:{size:10}}},
+      },
+    },
+  });
+}
+
+function renderPriceChart(d){
+  const ctx = document.getElementById('chart-price');
+  if(!ctx||!d) return;
+  const colors = d.data.map((_,i)=>i===d.ours?'rgba(62,207,142,.8)':'rgba(107,114,128,.35)');
+  const borders = d.data.map((_,i)=>i===d.ours?'#1a9e6a':'#9ca3af');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:d.labels,
+      datasets:[{
+        label:'가격(원)',
+        data:d.data,
+        backgroundColor:colors,
+        borderColor:borders,
+        borderWidth:1.5,
+        borderRadius:4,
+      }],
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>c.raw.toLocaleString()+'원'}},
+        annotation:{},
+      },
+      scales:{
+        x:{grid:{color:'#f3f4f6'},ticks:{callback:v=>v.toLocaleString()+'원',font:{size:10}}},
+        y:{grid:{display:false},ticks:{font:{size:11}}},
+      },
+    },
+  });
+}
+
+function renderVFMChart(d){
+  const ctx = document.getElementById('chart-vfm');
+  if(!ctx||!d) return;
+  const latest = d.data[d.data.length-1];
+  const el = document.getElementById('vfm-latest');
+  if(el) el.textContent = latest+'점';
+  new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:d.labels,
+      datasets:[{
+        label:'가성비 지수',
+        data:d.data,
+        borderColor:'#3b82f6',
+        backgroundColor:'rgba(59,130,246,.08)',
+        borderWidth:2,
+        pointRadius:3,
+        pointBackgroundColor:'#3b82f6',
+        tension:.4,
+        fill:true,
+      }],
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{min:1,max:5,grid:{color:'#f3f4f6'},ticks:{stepSize:.5,font:{size:10}}},
+      },
+    },
+  });
+}
+
+function renderMixChart(d){
+  const ctx = document.getElementById('chart-mix');
+  if(!ctx||!d) return;
+  const palette=['#3ecf8e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+  new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:d.labels,
+      datasets:[{
+        data:d.data,
+        backgroundColor:palette.slice(0,d.data.length),
+        borderWidth:2,
+        borderColor:'#fff',
+      }],
+    },
+    options:{
+      responsive:false,
+      cutout:'62%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}%`}}},
+    },
+  });
+  // 범례
+  const leg = document.getElementById('chart-mix-legend');
+  if(leg) leg.innerHTML = d.labels.map((l,i)=>`
+    <div style="display:flex;align-items:center;gap:7px;padding:4px 0">
+      <div style="width:10px;height:10px;border-radius:2px;background:${palette[i]};flex-shrink:0"></div>
+      <span style="color:var(--text2)">${l}</span>
+      <span style="margin-left:auto;font-family:var(--mono);color:var(--text4)">${d.data[i]}%</span>
+    </div>`).join('');
+}
+
+// 기간 전환
+const _chartInstances = {};
+function switchPeriod(chartId, days, btn){
+  btn.closest('.period-tabs').querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  // 실제 구현 시 API 호출로 교체
+  showToast(`${days}일 데이터로 전환 중…`);
+}
+new IntersectionObserver(entries=>entries.forEach(e=>{
+  if(e.isIntersecting) e.target.classList.add('in');
+}),{threshold:.06,rootMargin:'0px 0px -20px 0px'})
+.observe && document.querySelectorAll('.reveal').forEach(el=>
+  new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');}),{threshold:.06}).observe(el)
+);
+
+// ── 초기화 ────────────────────────────────────────────
+(function init(){
+  bindData(SELLER_DATA);
+  renderFilters();
+  renderProducts();
+  renderReviews();
+  renderDocs();
+  renderCreditGauge();
+  setupMap();
+  setupDistance();
+  updateSidebarBadges();
+  // Chart.js 동적 로드 후 차트 초기화
+  const chartScript = document.createElement('script');
+  chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+  chartScript.onload = () => initAnalytics();
+  document.head.appendChild(chartScript);
+  if(SELLER_DATA.business.name!=='업체명')
+    document.title=SELLER_DATA.business.name+' — K-Market';
+  document.querySelector('meta[name="openhash-node"]')?.setAttribute('content',SELLER_DATA.openhash.node);
+})();
+</script>
+</body>
+</html>
