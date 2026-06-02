@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>K-Market 국가 경제 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+:root{
+  --bg:#f8f9fa;--bg-alt:#fff;--bg-sub:#f1f3f5;
+  --border:#e5e7eb;--border2:#d1d5db;
+  --brand:#3ecf8e;--brand-dk:#1a9e6a;--brand-bg:#f0fdf8;
+  --text:#0f172a;--text2:#1e293b;--text3:#374151;--text4:#6b7280;
+  --red:#ef4444;--amber:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;
+  --nav-h:52px;--sw:48px;--swe:220px;
+  --font:'Inter','Noto Sans KR',-apple-system,sans-serif;
+  --mono:'DM Mono',monospace;
+  --r:6px;--rl:10px;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);z-index:1000;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px}
+.nl{display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px;color:var(--text)}
+.nl-icon{width:26px;height:26px;border-radius:6px;background:var(--brand);display:flex;align-items:center;justify-content:center}
+.ns{font-weight:300;color:var(--border2);margin:0 2px}
+.nbadge{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:99px}
+.nbadge.live{background:#dcfce7;color:#15803d;border:1px solid #a7f3d0}
+.nbadge.nat{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.nsp{flex:1}
+.nr{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text4)}
+.nbtn{padding:5px 12px;border:1px solid var(--border);border-radius:var(--r);background:#fff;font-size:12px;cursor:pointer;font-family:var(--font);color:var(--text2);transition:all .15s}
+.nbtn:hover{background:var(--bg-sub)}
+.nbtn.pri{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+#nclock{font-family:var(--mono);font-size:12px}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:var(--nav-h);left:0;bottom:0;width:var(--sw);background:#fff;border-right:1px solid var(--border);z-index:90;display:flex;flex-direction:column;overflow:hidden;transition:width .18s cubic-bezier(.4,0,.2,1);scrollbar-width:none}
+.sidebar::-webkit-scrollbar{display:none}
+.sidebar:hover{width:var(--swe);box-shadow:2px 0 16px rgba(0,0,0,.07)}
+.sb-sec{padding:5px 0}
+.sb-sec+.sb-sec{border-top:1px solid #f3f4f6;margin-top:2px}
+.sb-sec-last{margin-top:auto}
+.sb-lbl{height:22px;padding:0 14px;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#9ca3af;display:flex;align-items:center;white-space:nowrap;overflow:hidden;opacity:0;transition:opacity .12s}
+.sidebar:hover .sb-lbl{opacity:1}
+.sn{display:flex;align-items:center;gap:10px;height:40px;padding:0 13px;width:100%;border:none;background:none;font-family:var(--font);cursor:pointer;color:#6b7280;white-space:nowrap;overflow:hidden;transition:background .1s,color .1s;text-decoration:none;text-align:left}
+.sn:hover{background:#f9fafb;color:#111827}
+.sn.active{background:var(--brand-bg);color:var(--brand-dk)}
+.sn.active .si svg{stroke:var(--brand-dk)}
+.si{width:24px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.si svg{width:18px;height:18px;stroke:#6b7280;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .1s;display:block}
+.sn:hover .si svg{stroke:#111827}
+.sl{font-size:13px;color:inherit;opacity:0;transition:opacity .1s .03s;white-space:nowrap;flex:1}
+.sidebar:hover .sl{opacity:1}
+.sbadge{font-size:11px;font-weight:600;border-radius:8px;padding:1px 6px;opacity:0;transition:opacity .1s .03s;flex-shrink:0}
+.sidebar:hover .sbadge{opacity:1}
+.sbadge.red{background:#fee2e2;color:#dc2626}
+.sbadge.green{background:#dcfce7;color:#15803d}
+.sbadge.blue{background:#dbeafe;color:#1d4ed8}
+
+/* MAIN */
+.main{margin-left:var(--sw);padding-top:var(--nav-h);transition:margin-left .18s cubic-bezier(.4,0,.2,1)}
+body:has(.sidebar:hover) .main{margin-left:var(--swe)}
+
+/* SECTION */
+.dash-sec{padding:22px 24px;border-bottom:1px solid var(--border)}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:12px}
+.sec-title{font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
+.sec-sub{font-size:12px;color:var(--text4);font-family:var(--mono);margin-bottom:16px}
+.sec-tag{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:99px;background:var(--brand-bg);color:var(--brand-dk);border:1px solid #a7f3d0}
+
+/* KPI CARDS */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:18px 24px;background:#fff;border-bottom:1px solid var(--border)}
+.kpi{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;position:relative;overflow:hidden;transition:box-shadow .15s;cursor:pointer}
+.kpi:hover{box-shadow:0 4px 12px rgba(0,0,0,.07)}
+.kpi-acc{position:absolute;top:0;left:0;width:3px;height:100%}
+.kpi-lbl{font-size:11px;font-family:var(--mono);color:var(--text4);letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+.kpi-val{font-size:20px;font-weight:700;letter-spacing:-1px;color:var(--text);line-height:1;margin-bottom:4px}
+.kpi-chg{font-size:12px;font-weight:500;display:flex;align-items:center;gap:3px}
+.kpi-chg.up{color:#16a34a}.kpi-chg.dn{color:var(--red)}
+.kpi-note{font-size:10px;color:var(--text4);font-family:var(--mono);margin-top:2px}
+
+/* CHARTS */
+.chart-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-grid3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px}
+.chart-grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;overflow:hidden}
+.card-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px}
+.card-title{font-size:14px;font-weight:600;color:var(--text)}
+.card-sub{font-size:11px;color:var(--text4);margin-top:2px;font-family:var(--mono)}
+.chart-wrap{position:relative;width:100%}
+.ptabs{display:flex;gap:2px;background:var(--bg-sub);border-radius:var(--r);padding:2px}
+.ptab{border:none;background:transparent;font-size:11px;font-family:var(--mono);color:var(--text4);padding:3px 8px;border-radius:4px;cursor:pointer;font-weight:500}
+.ptab.active{background:#fff;color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+/* ECONOMY CYCLE */
+.cycle-wrap{display:flex;align-items:center;gap:24px;padding:12px 0}
+.cycle-gauge{flex:1;position:relative;height:12px;background:linear-gradient(90deg,#bfdbfe,#3ecf8e,#f59e0b,#ef4444);border-radius:6px}
+.cycle-needle{position:absolute;top:-4px;width:4px;height:20px;background:var(--text);border-radius:2px;transform:translateX(-50%);transition:left .6s ease}
+.cycle-labels{display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono);color:var(--text4);margin-top:5px}
+
+/* ALERT */
+.alert-list{display:flex;flex-direction:column;gap:8px}
+.alert-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:var(--r);border:1px solid var(--border);background:#fff}
+.alert-ic{width:28px;height:28px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ai-r{background:#fee2e2;color:#dc2626}
+.ai-a{background:#fef3c7;color:#d97706}
+.ai-g{background:#dcfce7;color:#16a34a}
+.ai-b{background:#dbeafe;color:#1d4ed8}
+.alert-title{font-size:13px;font-weight:600;color:var(--text)}
+.alert-desc{font-size:12px;color:var(--text4);margin-top:1px}
+.alert-time{font-family:var(--mono);font-size:10px;color:var(--text4);margin-left:auto;flex-shrink:0}
+
+/* TABLE */
+.dt{width:100%;border-collapse:collapse;font-size:13px}
+.dt th{padding:8px 12px;text-align:left;font-size:11px;font-family:var(--mono);font-weight:600;color:var(--text4);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg-sub)}
+.dt td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+.dt tr:last-child td{border-bottom:none}
+.dt tr:hover td{background:var(--bg-sub)}
+.td-r{text-align:right;font-family:var(--mono);font-weight:500}
+.bar-row{display:flex;align-items:center;gap:8px}
+.bar-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.badge-s{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+.b-g{background:#dcfce7;color:#15803d}
+.b-a{background:#fef3c7;color:#d97706}
+.b-r{background:#fee2e2;color:#dc2626}
+.b-b{background:#dbeafe;color:#1d4ed8}
+
+/* AI 정책실 */
+.policy-wrap{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
+.chat-box{background:#fff;border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;display:flex;flex-direction:column}
+.chat-hd{background:var(--brand);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.chat-msgs{flex:1;padding:12px;display:flex;flex-direction:column;gap:8px;height:260px;overflow-y:auto}
+.msg-ai{background:var(--bg-sub);color:var(--text);border-radius:3px 10px 10px 10px;padding:9px 12px;font-size:13px;line-height:1.6;max-width:90%;align-self:flex-start}
+.msg-u{background:var(--brand);color:#fff;border-radius:10px 3px 10px 10px;padding:9px 12px;font-size:13px;max-width:90%;align-self:flex-end}
+.chat-dock{padding:8px;border-top:1px solid var(--border);display:flex;gap:6px}
+.chat-ta{flex:1;border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;font-family:var(--font);font-size:13px;color:var(--text);resize:none;outline:none;background:var(--bg-sub);transition:border-color .15s}
+.chat-ta:focus{border-color:var(--brand);background:#fff}
+.chat-send{width:32px;height:32px;border-radius:var(--r);background:var(--brand);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sim-card{background:#fff;border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
+.sim-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px}
+.sim-row{margin-bottom:14px}
+.sim-lbl{font-size:11px;font-family:var(--mono);color:var(--text4);margin-bottom:5px;display:flex;justify-content:space-between}
+.sim-val{font-size:13px;font-weight:600;color:var(--brand-dk)}
+
+/* VIEW TOGGLE */
+.view-toggle{display:flex;gap:2px;background:var(--bg-sub);border-radius:var(--r);padding:2px;font-size:11px}
+.vt-btn{padding:4px 12px;border:none;background:transparent;color:var(--text4);cursor:pointer;border-radius:4px;font-family:var(--mono);font-size:11px;font-weight:500}
+.vt-btn.active{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+/* TICKER */
+.ticker{background:#0f172a;color:rgba(255,255,255,.7);font-family:var(--mono);font-size:11px;overflow:hidden;white-space:nowrap;height:28px;display:flex;align-items:center}
+.ticker-track{display:inline-flex;gap:40px;animation:tick 40s linear infinite}
+@keyframes tick{to{transform:translateX(-50%)}}
+.tick-pos{color:#3ecf8e}
+.tick-neg{color:#ef4444}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.chart-grid3{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0!important}.kpi-row{grid-template-columns:repeat(2,1fr)}.chart-grid2,.chart-grid3,.chart-grid4{grid-template-columns:1fr}.policy-wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nl">
+    <div class="nl-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></div>
+    K-Market
+  </div>
+  <span class="ns">/</span>
+  <span style="font-size:13px;color:var(--text3);font-weight:500">국가 경제 대시보드</span>
+  <span class="nbadge live">● LIVE</span>
+  <span class="nbadge nat">대한민국</span>
+  <div class="nsp"></div>
+  <div class="nr">
+    <div class="view-toggle">
+      <button class="vt-btn active" onclick="setView('citizen',this)">시민</button>
+      <button class="vt-btn" onclick="setView('expert',this)">전문가</button>
+      <button class="vt-btn" onclick="setView('policy',this)">정책</button>
+    </div>
+    <span id="nclock"></span>
+    <button class="nbtn" onclick="refreshAll()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-1px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      새로고침
+    </button>
+    <a class="nbtn" href="kmarket_admin_dashboard.html" style="text-decoration:none">← 사업자</a>
+  </div>
+</nav>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-sec">
+    <button class="sn active" id="sn-overview" onclick="snActive(this);show('overview')">
+      <span class="si"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+      <span class="sl">경제 개요</span>
+    </button>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">지표</div>
+    <button class="sn" id="sn-region" onclick="snActive(this);show('region')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+      <span class="sl">지역별 분석</span>
+    </button>
+    <button class="sn" id="sn-industry" onclick="snActive(this);show('industry')">
+      <span class="si"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span>
+      <span class="sl">업종별 분석</span>
+    </button>
+    <button class="sn" id="sn-life" onclick="snActive(this);show('life')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+      <span class="sl">국민 생활 지표</span>
+    </button>
+    <button class="sn" id="sn-labor" onclick="snActive(this);show('labor')">
+      <span class="si"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      <span class="sl">노동·생산성</span>
+    </button>
+    <button class="sn" id="sn-trade" onclick="snActive(this);show('trade')">
+      <span class="si"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+      <span class="sl">수출·수입</span>
+    </button>
+  </div>
+  <div class="sb-sec sb-sec-last">
+    <button class="sn" id="sn-ai" onclick="snActive(this);show('ai')">
+      <span class="si"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+      <span class="sl">AI 정책 분석실</span>
+      <span class="sbadge blue">AI</span>
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main" id="main">
+
+  <!-- 실시간 티커 -->
+  <div class="ticker">
+    <div class="ticker-track" id="ticker-track"></div>
+  </div>
+
+  <!-- KPI TOP -->
+  <div class="kpi-row" id="kpi-top"></div>
+
+  <!-- ① 경제 개요 -->
+  <div id="section-overview">
+    <div class="dash-sec">
+      <div class="sec-hd">
+        <div class="sec-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand-dk)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          GDP 및 경기 사이클
+        </div>
+        <div class="ptabs">
+          <button class="ptab active">분기</button>
+          <button class="ptab">연간</button>
+          <button class="ptab">5년</button>
+        </div>
+      </div>
+      <div class="sec-sub">실질 GDP 성장률 및 경기 순환 위치 · 한국은행 기준</div>
+      <div class="chart-grid3">
+        <div class="card" style="grid-column:1/3">
+          <div class="card-hd">
+            <div><div class="card-title">실질 GDP 성장률 (전년 동기 대비)</div><div class="card-sub">단위: %</div></div>
+          </div>
+          <div class="chart-wrap"><canvas id="c-gdp" height="180"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">경기 사이클 위치</div></div>
+          <div class="cycle-wrap">
+            <div style="flex:1">
+              <div class="cycle-gauge"><div class="cycle-needle" id="cycle-needle" style="left:62%"></div></div>
+              <div class="cycle-labels"><span>침체</span><span>회복</span><span>확장</span><span>과열</span></div>
+            </div>
+          </div>
+          <div style="text-align:center;margin-top:12px">
+            <div style="font-size:18px;font-weight:700;color:var(--brand-dk)" id="cycle-label">확장 국면</div>
+            <div style="font-size:12px;color:var(--text4);font-family:var(--mono)">CI 선행지수 기준</div>
+          </div>
+          <div style="margin-top:16px">
+            <canvas id="c-leading" height="100"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-sec">
+      <div class="sec-hd">
+        <div class="sec-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          물가 · 실업 · 금리
+        </div>
+      </div>
+      <div class="sec-sub">소비자물가지수(CPI), 실업률, 기준금리 추이</div>
+      <div class="chart-grid3">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">소비자물가 상승률</div><div class="card-sub">전년 동월 대비 · %</div></div>
+          <div class="chart-wrap"><canvas id="c-cpi" height="160"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">실업률</div><div class="card-sub">청년(15~29세) 포함 · %</div></div>
+          <div class="chart-wrap"><canvas id="c-unem" height="160"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">기준금리 추이</div><div class="card-sub">한국은행 기준금리 · %</div></div>
+          <div class="chart-wrap"><canvas id="c-rate" height="160"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-sec">
+      <div class="sec-hd">
+        <div class="sec-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          경제 이상 감지 알림
+        </div>
+        <span class="sec-tag">AI 모니터링</span>
+      </div>
+      <div class="alert-list" id="alert-list"></div>
+    </div>
+  </div>
+
+  <!-- ② 지역별 -->
+  <div id="section-region" style="display:none">
+    <div class="dash-sec">
+      <div class="sec-hd">
+        <div class="sec-title">지역별 경제 현황</div>
+        <div class="ptabs" id="region-metric-tabs">
+          <button class="ptab active" onclick="switchRegionMetric('grdp',this)">GRDP</button>
+          <button class="ptab" onclick="switchRegionMetric('employ',this)">고용률</button>
+          <button class="ptab" onclick="switchRegionMetric('startup',this)">창업률</button>
+          <button class="ptab" onclick="switchRegionMetric('income',this)">1인당 소득</button>
+        </div>
+      </div>
+      <div class="sec-sub">17개 시·도 지역별 경제 지표 비교</div>
+      <div class="chart-grid2">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">지역별 비교 (가로 막대)</div></div>
+          <div class="chart-wrap"><canvas id="c-region" height="300"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">수도권 vs. 비수도권 격차 추이</div><div class="card-sub">GRDP 비중 · %</div></div>
+          <div class="chart-wrap"><canvas id="c-region-gap" height="300"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 업종별 -->
+  <div id="section-industry" style="display:none">
+    <div class="dash-sec">
+      <div class="sec-hd"><div class="sec-title">업종별 경제 분석</div></div>
+      <div class="sec-sub">23개 산업 분류 기준 매출·고용·영업이익률 · 통계청</div>
+      <div class="chart-grid2">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">업종별 매출 성장률 (전년 동기)</div></div>
+          <div class="chart-wrap"><canvas id="c-industry" height="320"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd">
+            <div><div class="card-title">업종 현황 상세</div><div class="card-sub">단위: 조원 / %</div></div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="dt" id="industry-table"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ 국민 생활 -->
+  <div id="section-life" style="display:none">
+    <div class="dash-sec">
+      <div class="sec-hd"><div class="sec-title">국민 생활 지표</div></div>
+      <div class="sec-sub">1인당 소비·구매량·소득 분위별 격차</div>
+      <div class="chart-grid2">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">1인당 월 소비액 추이</div><div class="card-sub">단위: 만원</div></div>
+          <div class="chart-wrap"><canvas id="c-consume" height="200"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">소득 5분위별 소비 격차</div><div class="card-sub">1분위(하위) → 5분위(상위)</div></div>
+          <div class="chart-wrap"><canvas id="c-quintile" height="200"></canvas></div>
+        </div>
+      </div>
+      <div style="margin-top:16px" class="chart-grid2">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">직군별 1인당 월 구매 건수</div><div class="card-sub">K-Market PDV 집계</div></div>
+          <div class="chart-wrap"><canvas id="c-purchase" height="200"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">소비 카테고리 비중 변화</div><div class="card-sub">2023 → 2024 → 2025 → 2026</div></div>
+          <div class="chart-wrap"><canvas id="c-category" height="200"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ 노동·생산성 -->
+  <div id="section-labor" style="display:none">
+    <div class="dash-sec">
+      <div class="sec-hd"><div class="sec-title">노동·생산성 지표</div></div>
+      <div class="sec-sub">시간당 노동 생산성 · 임금 분포 · OECD 비교</div>
+      <div class="chart-grid2">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">1인당 노동 생산성 추이</div><div class="card-sub">시간당 부가가치 창출액 · 달러</div></div>
+          <div class="chart-wrap"><canvas id="c-productivity" height="200"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">OECD 주요국 비교 (2025)</div><div class="card-sub">시간당 GDP 달러</div></div>
+          <div class="chart-wrap"><canvas id="c-oecd" height="200"></canvas></div>
+        </div>
+      </div>
+      <div style="margin-top:16px" class="chart-grid2">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">고용 형태별 비율 추이</div><div class="card-sub">정규·비정규·플랫폼 노동 · %</div></div>
+          <div class="chart-wrap"><canvas id="c-employ-type" height="200"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">직군별 임금 중앙값</div><div class="card-sub">월 만원</div></div>
+          <div class="chart-wrap"><canvas id="c-wage" height="200"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ 수출입 -->
+  <div id="section-trade" style="display:none">
+    <div class="dash-sec">
+      <div class="sec-hd"><div class="sec-title">수출·수입 현황</div></div>
+      <div class="sec-sub">월별 수출·수입·무역수지 · 관세청 · 억 달러</div>
+      <div class="chart-grid2">
+        <div class="card" style="grid-column:1/-1">
+          <div class="card-hd">
+            <div><div class="card-title">수출·수입·무역수지 (월별)</div><div class="card-sub">억 달러 / 추세선 포함</div></div>
+            <div class="ptabs">
+              <button class="ptab active">12개월</button>
+              <button class="ptab">3년</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="c-trade" height="200"></canvas></div>
+        </div>
+      </div>
+      <div style="margin-top:16px" class="chart-grid2">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">주요 수출 품목 비중</div></div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <div class="chart-wrap" style="width:160px;flex-shrink:0"><canvas id="c-export-mix" width="160" height="160"></canvas></div>
+            <div id="export-mix-legend" style="flex:1;font-size:12px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">주요 교역국 수출액 (2025)</div><div class="card-sub">억 달러</div></div>
+          <div class="chart-wrap"><canvas id="c-trade-country" height="160"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ AI 정책실 -->
+  <div id="section-ai" style="display:none">
+    <div class="dash-sec">
+      <div class="sec-hd">
+        <div class="sec-title">AI 정책 분석실</div>
+        <span class="sec-tag">DeepSeek 연동</span>
+      </div>
+      <div class="sec-sub">자연어 질의 · 이상 감지 경보 · 정책 시뮬레이터</div>
+      <div class="policy-wrap">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-hd"><div class="card-title">시나리오 시뮬레이터</div><div class="card-sub">정책 변수 조정 → 파급 효과 추정</div></div>
+            <div id="sim-panel"></div>
+          </div>
+          <div class="card">
+            <div class="card-hd"><div class="card-title">AI 이상 감지 경보</div></div>
+            <div class="alert-list" id="alert-policy"></div>
+          </div>
+        </div>
+        <div class="chat-box">
+          <div class="chat-hd">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            K-Market 경제 AI
+          </div>
+          <div class="chat-msgs" id="policy-msgs"></div>
+          <div style="padding:6px 10px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border)">
+            <button style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:99px;background:#fff;cursor:pointer;font-family:var(--font)" onclick="askPolicy('올해 제조업 수출 추세는?')">제조업 수출</button>
+            <button style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:99px;background:#fff;cursor:pointer;font-family:var(--font)" onclick="askPolicy('청년 실업률 개선 방안은?')">청년 실업</button>
+            <button style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:99px;background:#fff;cursor:pointer;font-family:var(--font)" onclick="askPolicy('물가 안정 정책 효과는?')">물가 안정</button>
+            <button style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:99px;background:#fff;cursor:pointer;font-family:var(--font)" onclick="askPolicy('지역 경제 격차 해소 방안은?')">지역 격차</button>
+          </div>
+          <div class="chat-dock">
+            <textarea class="chat-ta" id="policy-input" rows="1" placeholder="경제 지표·정책에 대해 질문하세요…"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPolicy()}"
+              oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,64)+'px'"></textarea>
+            <button class="chat-send" onclick="sendPolicy()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family="'Inter','Noto Sans KR',sans-serif";
+Chart.defaults.font.size=12;
+Chart.defaults.color='#6b7280';
+
+const M=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+const Q=['23Q1','23Q2','23Q3','23Q4','24Q1','24Q2','24Q3','24Q4','25Q1','25Q2','25Q3','25Q4'];
+const palette=['#3ecf8e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
+
+const DATA = {
+  gdp:      {labels:Q, data:[1.3,0.9,1.4,2.2,2.8,2.3,3.1,2.9,3.4,3.1,3.6,3.9], trend:[1.0,1.2,1.4,1.7,2.0,2.2,2.5,2.7,3.0,3.2,3.4,3.7]},
+  leading:  {labels:Q, data:[98.2,98.8,99.4,100.1,100.7,101.2,101.8,102.3,102.9,103.4,103.8,104.2]},
+  cpi:      {labels:M, data:[3.4,3.6,3.1,2.9,2.7,2.5,2.4,2.3,2.1,2.0,1.9,1.8]},
+  unem:     {labels:M, data:[3.1,3.4,3.2,3.0,2.9,2.8,2.7,2.6,2.7,2.8,2.6,2.5], youth:[7.8,8.1,7.9,7.6,7.4,7.2,7.0,6.9,7.1,7.3,7.0,6.8]},
+  rate:     {labels:M, data:[3.50,3.50,3.50,3.25,3.25,3.25,3.00,3.00,2.75,2.75,2.75,2.75]},
+  region:   {labels:['서울','경기','인천','부산','경남','대구','광주','대전','충남','전남','경북','충북','전북','강원','제주','울산','세종'],
+             grdp:  [473,401,88,85,78,55,38,38,71,41,65,38,35,28,22,68,12],
+             employ:[62,64,60,62,63,59,61,63,64,60,61,62,59,60,68,63,72],
+             startup:[4.8,5.2,4.3,3.9,4.0,3.6,3.7,4.1,4.2,3.4,3.5,3.8,3.3,3.1,5.1,3.7,5.8],
+             income: [410,380,345,335,320,310,290,305,298,270,285,280,272,265,315,360,295]},
+  industry: {
+    labels:['반도체·전자','자동차·기계','화학·석유','철강·금속','음식료','건설','금융·보험','유통·물류','의료·바이오','IT·소프트웨어','관광·숙박'],
+    growth:[12.4,-2.1,3.8,-1.4,4.2,-3.6,6.8,7.2,11.3,14.8,9.1],
+    revenue:[412,318,245,187,156,142,389,278,124,198,88],
+    margin:[18.4,6.2,7.8,4.1,5.6,3.2,22.1,4.8,14.2,21.3,8.7],
+  },
+  consume:  {labels:M, data:[312,298,325,341,355,368,382,374,358,345,361,378]},
+  quintile: {labels:['1분위','2분위','3분위','4분위','5분위'], data:[148,218,298,402,612]},
+  purchase: {labels:['화이트칼라','블루칼라','자영업자','주부','학생','노인'], data:[18.4,12.1,15.6,14.2,8.9,6.3]},
+  category: {
+    labels:['식품','의류','전자','의료','문화·여가','교육','교통','기타'],
+    y2023:[28,12,15,8,7,9,11,10],
+    y2026:[25,10,17,11,9,8,10,10],
+  },
+  productivity:{labels:[...Array(10)].map((_,i)=>2016+i+''), data:[34.2,35.8,37.1,38.4,38.9,37.2,38.8,40.1,41.6,43.2], trend:[34,35.2,36.4,37.6,38.5,39.0,39.8,40.6,41.5,42.8]},
+  oecd:     {labels:['룩셈부르크','아일랜드','미국','독일','프랑스','일본','한국','멕시코'],data:[118,104,78,68,60,48,43,22]},
+  employType:{labels:[...Array(6)].map((_,i)=>2021+i+''),
+              regular:[52,53,53.5,54,55,56], nonregular:[32,31,30.5,30,29,28], platform:[8,9,10,11,11.5,12]},
+  wage:     {labels:['경영관리','IT·개발','금융','의료','제조','서비스','농림'], data:[612,538,580,648,352,285,248]},
+  trade:    {labels:M,
+             export:[542,511,556,587,614,595,628,612,641,657,634,668],
+             import:[521,488,532,561,578,564,595,581,612,624,601,635],
+             balance:null},
+  exportMix:{labels:['반도체','자동차','석유화학','기계','철강','바이오','기타'],data:[21,16,9,11,7,6,30]},
+  tradeCountry:{labels:['중국','미국','베트남','일본','홍콩','대만','독일','인도'],data:[1248,1124,612,489,378,312,198,187]},
+  alerts:[
+    {type:'red',   title:'물가 상승 압력 재부상',     desc:'에너지 가격 반등으로 6개월 연속 하락 추세 꺾일 위험. 2월 CPI 0.3%p 반등 포착.',          time:'방금'},
+    {type:'amber', title:'반도체 수출 증가세 둔화',    desc:'AI 반도체 수요 강세에도 메모리 가격 하락으로 9월 수출 전월 대비 -3.2% 감소.',             time:'2시간 전'},
+    {type:'amber', title:'청년 실업률 소폭 상승',      desc:'대졸 신규 취업자 수 감소. 9월 청년 실업률 7.1%로 전월(6.9%) 대비 0.2%p 상승.',          time:'어제'},
+    {type:'blue',  title:'서비스업 고용 호조',         desc:'플랫폼·디지털 서비스업 고용 12.4% 증가. IT·바이오 부문 신규 채용 전년 대비 18% 확대.',    time:'오늘'},
+    {type:'green', title:'무역수지 11개월 연속 흑자',  desc:'10월 무역수지 +33억 달러. 자동차·K-콘텐츠 수출 호조로 연속 흑자 기록 지속 중.',          time:'어제'},
+  ],
+};
+DATA.trade.balance = DATA.trade.export.map((e,i)=>e-DATA.trade.import[i]);
+
+function linReg(arr){
+  const n=arr.length,sx=arr.reduce((_,__,i)=>_+i,0),sy=arr.reduce((a,v)=>a+v,0);
+  const sx2=arr.reduce((_,__,i)=>_+i*i,0),sxy=arr.reduce((a,v,i)=>a+i*v,0);
+  const b=(n*sxy-sx*sy)/(n*sx2-sx*sx),a=(sy-b*sx)/n;
+  return arr.map((_,i)=>+(a+b*i).toFixed(2));
+}
+
+function wrapCanvas(id,h){
+  return `<div style="position:relative;height:${h}px;width:100%"><canvas id="${id}" height="${h}"></canvas></div>`;
+}
+
+function makeChart(id,cfg){
+  const el=document.getElementById(id);
+  if(!el)return null;
+  return new Chart(el,cfg);
+}
+
+function initCharts(){
+  // GDP
+  makeChart('c-gdp',{type:'bar',data:{labels:Q,datasets:[
+    {label:'GDP 성장률',data:DATA.gdp.data,backgroundColor:DATA.gdp.data.map(v=>v>=0?'rgba(62,207,142,.3)':'rgba(239,68,68,.3)'),borderColor:DATA.gdp.data.map(v=>v>=0?'#3ecf8e':'#ef4444'),borderWidth:1.5,borderRadius:3,order:2},
+    {label:'추세선',data:DATA.gdp.trend,type:'line',borderColor:'#f59e0b',borderWidth:2,pointRadius:0,tension:.4,fill:false,order:1},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f3f4f6'},ticks:{callback:v=>v+'%'}}}}});
+
+  // 선행지수
+  makeChart('c-leading',{type:'line',data:{labels:Q,datasets:[{label:'경기선행지수',data:DATA.leading.data,borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.08)',borderWidth:2,pointRadius:2,tension:.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:6}},y:{grid:{color:'#f3f4f6'},ticks:{stepSize:1}}}}});
+
+  // CPI
+  makeChart('c-cpi',{type:'line',data:{labels:M,datasets:[
+    {label:'CPI 상승률',data:DATA.cpi.data,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.08)',borderWidth:2,pointRadius:3,tension:.4,fill:true},
+    {label:'목표(2%)',data:Array(12).fill(2),borderColor:'#9ca3af',borderWidth:1.5,borderDash:[4,2],pointRadius:0},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'},grid:{color:'#f3f4f6'}}}}});
+
+  // 실업률
+  makeChart('c-unem',{type:'line',data:{labels:M,datasets:[
+    {label:'전체 실업률',data:DATA.unem.data,borderColor:'#3b82f6',borderWidth:2,pointRadius:2,tension:.4,fill:false},
+    {label:'청년 실업률',data:DATA.unem.youth,borderColor:'#f59e0b',borderWidth:2,pointRadius:2,tension:.4,fill:false,borderDash:[4,2]},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'},grid:{color:'#f3f4f6'}}}}});
+
+  // 기준금리
+  makeChart('c-rate',{type:'line',data:{labels:M,datasets:[{label:'기준금리',data:DATA.rate.data,borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.08)',borderWidth:2.5,pointRadius:4,tension:0,fill:true,stepped:'middle'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{min:2,max:4,ticks:{callback:v=>v+'%'},grid:{color:'#f3f4f6'}}}}});
+
+  // 지역 막대
+  makeChart('c-region',{type:'bar',data:{labels:DATA.region.labels,datasets:[{label:'GRDP (조원)',data:DATA.region.grdp,backgroundColor:DATA.region.labels.map((_,i)=>i<3?'rgba(62,207,142,.6)':'rgba(59,130,246,.4)'),borderWidth:0,borderRadius:2}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f3f4f6'}},y:{grid:{display:false},ticks:{font:{size:11}}}}}});
+
+  // 수도권 비중 추이
+  const years=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
+  makeChart('c-region-gap',{type:'line',data:{labels:years,datasets:[
+    {label:'수도권',data:[48.2,48.5,49.0,49.4,50.1,50.3,50.8,51.2,51.6,51.9,52.3],borderColor:'#3ecf8e',borderWidth:2,pointRadius:3,tension:.4,fill:false},
+    {label:'비수도권',data:[51.8,51.5,51.0,50.6,49.9,49.7,49.2,48.8,48.4,48.1,47.7],borderColor:'#ef4444',borderWidth:2,pointRadius:3,tension:.4,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'},grid:{color:'#f3f4f6'}}}}});
+
+  // 업종 성장률
+  makeChart('c-industry',{type:'bar',data:{labels:DATA.industry.labels,datasets:[{label:'매출 성장률 (%)',data:DATA.industry.growth,backgroundColor:DATA.industry.growth.map(v=>v>=0?'rgba(62,207,142,.5)':'rgba(239,68,68,.5)'),borderColor:DATA.industry.growth.map(v=>v>=0?'#3ecf8e':'#ef4444'),borderWidth:1.5,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f3f4f6'},ticks:{callback:v=>v+'%'}},y:{grid:{display:false},ticks:{font:{size:11}}}}}});
+
+  // 소비 추이
+  makeChart('c-consume',{type:'line',data:{labels:M,datasets:[
+    {label:'1인당 소비',data:DATA.consume.data,borderColor:'#3ecf8e',backgroundColor:'rgba(62,207,142,.1)',borderWidth:2,pointRadius:3,tension:.4,fill:true},
+    {label:'추세',data:linReg(DATA.consume.data),borderColor:'#f59e0b',borderWidth:1.5,borderDash:[4,2],pointRadius:0,tension:.4,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'만'},grid:{color:'#f3f4f6'}}}}});
+
+  // 소득분위
+  makeChart('c-quintile',{type:'bar',data:{labels:DATA.quintile.labels,datasets:[{label:'월 소비액(만원)',data:DATA.quintile.data,backgroundColor:['rgba(59,130,246,.5)','rgba(62,207,142,.4)','rgba(245,158,11,.4)','rgba(239,68,68,.4)','rgba(139,92,246,.5)'],borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'만'},grid:{color:'#f3f4f6'}}}}});
+
+  // 직군별 구매 건수
+  makeChart('c-purchase',{type:'bar',data:{labels:DATA.purchase.labels,datasets:[{data:DATA.purchase.data,backgroundColor:palette.slice(0,6).map(c=>c+'99'),borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'건'},grid:{color:'#f3f4f6'}}}}});
+
+  // 소비 카테고리 비교
+  makeChart('c-category',{type:'bar',data:{labels:DATA.category.labels,datasets:[
+    {label:'2023',data:DATA.category.y2023,backgroundColor:'rgba(107,114,128,.3)',borderRadius:2,borderWidth:0},
+    {label:'2026',data:DATA.category.y2026,backgroundColor:'rgba(62,207,142,.5)',borderRadius:2,borderWidth:0},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'},grid:{color:'#f3f4f6'}}}}});
+
+  // 노동생산성
+  makeChart('c-productivity',{type:'line',data:{labels:DATA.productivity.labels,datasets:[
+    {label:'생산성',data:DATA.productivity.data,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.1)',borderWidth:2,pointRadius:3,tension:.4,fill:true},
+    {label:'추세',data:DATA.productivity.trend,borderColor:'#f59e0b',borderWidth:1.5,borderDash:[4,2],pointRadius:0,tension:.4,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'$'},grid:{color:'#f3f4f6'}}}}});
+
+  // OECD 비교
+  makeChart('c-oecd',{type:'bar',data:{labels:DATA.oecd.labels,datasets:[{data:DATA.oecd.data,backgroundColor:DATA.oecd.labels.map(l=>l==='한국'?'rgba(62,207,142,.8)':'rgba(59,130,246,.35)'),borderWidth:0,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>v+'$'},grid:{color:'#f3f4f6'}},y:{grid:{display:false},ticks:{font:{size:11}}}}}});
+
+  // 고용 형태
+  makeChart('c-employ-type',{type:'line',data:{labels:DATA.employType.labels,datasets:[
+    {label:'정규직',data:DATA.employType.regular,borderColor:'#3ecf8e',borderWidth:2,pointRadius:3,tension:.4,fill:false},
+    {label:'비정규직',data:DATA.employType.nonregular,borderColor:'#ef4444',borderWidth:2,pointRadius:3,tension:.4,fill:false,borderDash:[4,2]},
+    {label:'플랫폼',data:DATA.employType.platform,borderColor:'#f59e0b',borderWidth:2,pointRadius:3,tension:.4,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'},grid:{color:'#f3f4f6'}}}}});
+
+  // 임금 분포
+  makeChart('c-wage',{type:'bar',data:{labels:DATA.wage.labels,datasets:[{data:DATA.wage.data,backgroundColor:DATA.wage.data.map(v=>v>=500?'rgba(62,207,142,.6)':v>=350?'rgba(59,130,246,.4)':'rgba(239,68,68,.4)'),borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'만'},grid:{color:'#f3f4f6'}}}}});
+
+  // 수출입 복합 차트
+  makeChart('c-trade',{type:'bar',data:{labels:M,datasets:[
+    {label:'수출',data:DATA.trade.export,backgroundColor:'rgba(62,207,142,.3)',borderColor:'#3ecf8e',borderWidth:1.5,borderRadius:3,order:2},
+    {label:'수입',data:DATA.trade.import,backgroundColor:'rgba(59,130,246,.2)',borderColor:'#3b82f6',borderWidth:1.5,borderRadius:3,order:2},
+    {label:'무역수지',data:DATA.trade.balance,type:'line',borderColor:'#f59e0b',borderWidth:2.5,pointRadius:3,tension:.4,fill:false,order:1,yAxisID:'y2'},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index'},plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'억$'},grid:{color:'#f3f4f6'}},y2:{position:'right',ticks:{callback:v=>v+'억$'},grid:{display:false}}}}});
+
+  // 수출 품목 도넛
+  const ec=new Chart(document.getElementById('c-export-mix'),{type:'doughnut',data:{labels:DATA.exportMix.labels,datasets:[{data:DATA.exportMix.data,backgroundColor:palette,borderWidth:2,borderColor:'#fff'}]},options:{responsive:false,cutout:'60%',plugins:{legend:{display:false}}}});
+  const leg=document.getElementById('export-mix-legend');
+  if(leg)leg.innerHTML=DATA.exportMix.labels.map((l,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px"><div style="width:9px;height:9px;border-radius:2px;background:${palette[i]};flex-shrink:0"></div><span>${l}</span><span style="margin-left:auto;font-family:var(--mono);color:var(--text4)">${DATA.exportMix.data[i]}%</span></div>`).join('');
+
+  // 교역국
+  makeChart('c-trade-country',{type:'bar',data:{labels:DATA.tradeCountry.labels,datasets:[{data:DATA.tradeCountry.data,backgroundColor:palette.map(c=>c+'88'),borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'억$'},grid:{color:'#f3f4f6'}}}}});
+}
+
+// KPI 상단 5종
+function renderKPI(){
+  const kpis=[
+    {label:'실질 GDP 성장률', val:'3.9%',  change:+0.3, note:'25Q4 · 전분기 대비', color:'#3ecf8e'},
+    {label:'소비자물가 상승률',val:'1.8%',  change:-0.1, note:'전년 동월 대비',     color:'#3b82f6'},
+    {label:'실업률',          val:'2.5%',  change:-0.1, note:'청년 6.8%',          color:'#8b5cf6'},
+    {label:'경상수지 흑자',   val:'$33억', change:+12,  note:'전월 대비 · 달러',   color:'#f59e0b'},
+    {label:'수출 증가율',     val:'+4.2%', change:+1.1, note:'전년 동월 대비',     color:'#06b6d4'},
+  ];
+  document.getElementById('kpi-top').innerHTML=kpis.map(k=>`
+    <div class="kpi" onclick="showDetail('${k.label}')">
+      <div class="kpi-acc" style="background:${k.color}"></div>
+      <div class="kpi-lbl">${k.label}</div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-chg ${k.change>=0?'up':'dn'}">${k.change>=0?'▲':'▼'} ${Math.abs(k.change)}${k.change<1&&k.change>-1&&!String(k.change).includes('$')?'%p':''}</div>
+      <div class="kpi-note">${k.note}</div>
+    </div>`).join('');
+}
+
+// 업종 테이블
+function renderIndustryTable(){
+  const t=document.getElementById('industry-table');
+  if(!t)return;
+  t.innerHTML=`<thead><tr><th>업종</th><th>매출(조원)</th><th>영업이익률</th><th>성장률</th><th>추세</th></tr></thead>
+  <tbody>${DATA.industry.labels.map((l,i)=>`
+    <tr>
+      <td style="font-weight:500">${l}</td>
+      <td class="td-r">${DATA.industry.revenue[i].toLocaleString()}</td>
+      <td><div class="bar-row"><div class="bar-track"><div class="bar-fill" style="width:${Math.min(DATA.industry.margin[i]*4,100)}%;background:${DATA.industry.margin[i]>=15?'#3ecf8e':DATA.industry.margin[i]>=8?'#3b82f6':'#f59e0b'}"></div></div><span style="font-family:var(--mono);font-size:11px">${DATA.industry.margin[i]}%</span></div></td>
+      <td><span class="badge-s ${DATA.industry.growth[i]>=5?'b-g':DATA.industry.growth[i]>=0?'b-b':'b-r'}">${DATA.industry.growth[i]>0?'+':''}${DATA.industry.growth[i]}%</span></td>
+      <td style="font-family:var(--mono);font-size:14px;color:${DATA.industry.growth[i]>=0?'#16a34a':'#dc2626'}">${DATA.industry.growth[i]>=0?'↑':'↓'}</td>
+    </tr>`).join('')}</tbody>`;
+}
+
+// 알림
+function renderAlerts(){
+  const icMap={red:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,amber:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,green:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,blue:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`};
+  const html=DATA.alerts.map(a=>`<div class="alert-item"><div class="alert-ic ai-${a.type[0]}">${icMap[a.type]}</div><div style="flex:1"><div class="alert-title">${a.title}</div><div class="alert-desc">${a.desc}</div></div><div class="alert-time">${a.time}</div></div>`).join('');
+  ['alert-list','alert-policy'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});
+}
+
+// 시뮬레이터
+function renderSimulator(){
+  const p=document.getElementById('sim-panel');if(!p)return;
+  const params=[
+    {key:'rate',   label:'기준금리 조정',    min:-1.5, max:1.5, step:0.25, val:0, unit:'%p'},
+    {key:'spend',  label:'재정 지출 규모',   min:-10,  max:20,  step:1,    val:0, unit:'조원'},
+    {key:'tariff', label:'수입관세율 조정',  min:-5,   max:10,  step:0.5,  val:0, unit:'%p'},
+  ];
+  p.innerHTML=params.map(pr=>`
+    <div class="sim-row">
+      <div class="sim-lbl">
+        <span>${pr.label}</span>
+        <span class="sim-val" id="sv-${pr.key}">${pr.val>0?'+':''}${pr.val}${pr.unit}</span>
+      </div>
+      <input type="range" min="${pr.min}" max="${pr.max}" step="${pr.step}" value="${pr.val}"
+        oninput="updateSim('${pr.key}',this.value,'${pr.unit}')" style="width:100%"/>
+    </div>`).join('')
+  +`<div style="margin-top:16px;padding:12px;background:var(--brand-bg);border-radius:var(--r);border:1px solid #a7f3d0">
+    <div style="font-size:12px;font-weight:600;color:var(--brand-dk);margin-bottom:8px">예상 파급 효과</div>
+    <div id="sim-result" style="font-size:12px;color:var(--text2);line-height:1.8">기준 시나리오 — 변수를 조정하면 효과가 산출됩니다.</div>
+  </div>`;
+}
+function updateSim(key,val,unit){
+  document.getElementById('sv-'+key).textContent=(val>0?'+':'')+parseFloat(val).toFixed(2)+unit;
+  document.getElementById('sim-result').textContent=`• GDP 성장률: 기준 대비 ${(Math.random()*.8-.1).toFixed(2)}%p 변화 예상\n• 물가: ${(Math.random()*.3-.05).toFixed(2)}%p 영향\n• 고용: 약 ${Math.round(Math.abs(val)*12000).toLocaleString()}명 증감 예상 (AI 추정)`;
+}
+
+// AI 정책 챗봇
+const policyDB={
+  '올해 제조업 수출 추세는?':'2026년 제조업 수출은 반도체 경기 회복에 힘입어 상반기 기준 전년 대비 +8.4% 성장했습니다. 특히 AI 서버용 HBM 메모리 수요가 폭발적으로 증가하며 반도체 수출이 21% 늘었습니다. 다만 전통 제조업(철강, 석유화학)은 중국산 저가 공세로 -3~5% 감소 추세입니다.',
+  '청년 실업률 개선 방안은?':'K-Market 데이터 분석에 따르면, 청년 실업의 주원인은 ① 디지털 기술 미스매치(34%), ② 대기업·중소기업 임금 격차(28%), ③ 수도권 집중(22%)입니다. 권고 정책: IT 부트캠프 연계 취업 보장제 확대, 지방 창업 인센티브 강화, 플랫폼 노동 사회보험 적용 확대.',
+  '물가 안정 정책 효과는?':'2025년 1월 3.4%에서 2026년 12월 1.8%로 목표 범위(2%) 하향 안정화 성공. 주요 기여 요인: 에너지 수입 다변화(-0.8%p), 농산물 유통구조 개선(-0.4%p), 금리 인상 효과(-0.6%p). 단, 주거비(전월세) 상승 압력은 여전히 지속 중.',
+  '지역 경제 격차 해소 방안은?':'K-Market GRDP 데이터 분석: 서울·경기·인천 수도권이 전국 GDP의 52.3%를 차지하며 격차는 2015년 이후 연 0.4%p씩 확대 중입니다. 권고 정책: ① 세종·충청 행정·연구 클러스터 집중 육성, ② 지역별 특화 산업 AI 지원 (제주=관광AI, 울산=친환경에너지, 전남=해상풍력), ③ 지역 K-Market 플랫폼 세제 혜택 부여.',
+};
+let policyInit=false;
+function initPolicyChat(){
+  if(policyInit)return;
+  policyInit=true;
+  appendPolicyMsg('ai','안녕하세요. K-Market 경제 AI입니다. 국가 경제 지표, 정책 효과, 산업 분석 등 무엇이든 질문하세요. 모든 분석은 K-Market 실거래 데이터와 공공 통계를 기반으로 합니다.');
+}
+function appendPolicyMsg(role,text){
+  const w=document.getElementById('policy-msgs');
+  const d=document.createElement('div');
+  d.className=role==='ai'?'msg-ai':'msg-u';
+  d.textContent=text;
+  w.appendChild(d);
+  w.scrollTop=w.scrollHeight;
+}
+function sendPolicy(){
+  const inp=document.getElementById('policy-input');
+  const t=inp.value.trim();if(!t)return;
+  appendPolicyMsg('user',t);
+  inp.value='';inp.style.height='auto';
+  setTimeout(()=>appendPolicyMsg('ai',policyDB[t]||`"${t}"에 대한 K-Market 실거래 데이터 분석 결과: 관련 지표가 통계청 데이터와 교차 검증 중입니다. 더 구체적인 질문을 주시면 정밀 분석을 제공합니다.`),600);
+}
+function askPolicy(q){document.getElementById('policy-input').value=q;sendPolicy();}
+
+// 티커
+function renderTicker(){
+  const items=[
+    '코스피 2,847.3 ▲18.2','코스닥 892.1 ▲5.4','원달러 1,321.4 ▼3.2',
+    'GDP 3.9% ▲','CPI 1.8% ▼','실업률 2.5% ▼','수출 +4.2%',
+    '무역수지 +33억$','기준금리 2.75%','외환보유액 4,312억$',
+    'WTI $72.4 ▼','천연가스 $2.84 ▼','반도체 수출 +12.1%'
+  ];
+  const doubled=[...items,...items];
+  document.getElementById('ticker-track').innerHTML=doubled.map((it,i)=>`<span class="${it.includes('▲')||it.includes('+')?' tick-pos':it.includes('▼')||it.includes('-')?' tick-neg':''}">${it}</span>`).join('');
+}
+
+// 섹션 토글
+const secs=['overview','region','industry','life','labor','trade','ai'];
+function show(id){
+  secs.forEach(s=>{const el=document.getElementById('section-'+s);if(el)el.style.display=s===id?'':'none';});
+  if(id==='industry')renderIndustryTable();
+  if(id==='ai'){renderSimulator();initPolicyChat();}
+}
+function snActive(el){
+  document.querySelectorAll('.sn').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// 뷰 전환 (시민/전문가/정책)
+function setView(v,btn){
+  document.querySelectorAll('.vt-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const expert=document.querySelector('.expert-only');
+  // 향후 확장: 전문가 뷰에서 원시 데이터 API 노출
+}
+
+// 지역 지표 전환
+function switchRegionMetric(metric, btn){
+  document.querySelectorAll('#region-metric-tabs .ptab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const d=DATA.region[metric];
+  const chart=Chart.getChart('c-region');
+  if(chart){chart.data.datasets[0].data=d;chart.data.datasets[0].label=btn.textContent;chart.update();}
+}
+
+// 시계
+function updateClock(){
+  const now=new Date();
+  const el=document.getElementById('nclock');
+  if(el)el.textContent=now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock,1000);updateClock();
+
+function refreshAll(){location.reload();}
+function showDetail(label){alert(`${label} 상세 보기 — 추후 드릴다운 구현`);}
+
+// 초기화
+(function init(){
+  renderTicker();
+  renderKPI();
+  renderAlerts();
+  initCharts();
+})();
+</script>
+</body>
+</html>
