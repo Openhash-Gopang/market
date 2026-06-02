@@ -1453,6 +1453,52 @@ function downloadSellerSite() {
   #webapp-modal.open #phone-frame { transform: translateY(0) scale(1); }
 }
 </style>
+
+<div id="webapp-modal">
+  <div id="phone-wrapper">
+    <button id="modal-close" onclick="closeWebApp()" title="닫기 (ESC)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <div id="phone-frame">
+      <div class="phone-top"><div class="phone-speaker"></div></div>
+      <div class="phone-btn-vol-up"></div>
+      <div class="phone-btn-vol-dn"></div>
+      <div class="phone-btn-power"></div>
+      <div class="phone-screen">
+        <div id="_iframe-loading" style="position:absolute;inset:0;z-index:2;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          background:#f8f9fa;gap:12px;border-radius:40px;opacity:1;transition:opacity 0.3s;">
+          <div style="width:28px;height:28px;border:2.5px solid #e5e7eb;
+            border-top-color:#3ecf8e;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+          <span style="font-size:14px;color:#9ca3af;">웹앱 로딩 중…</span>
+        </div>
+        <div id="_iframe-err" style="display:none;position:absolute;inset:0;z-index:3;
+          flex-direction:column;align-items:center;justify-content:center;
+          background:#f8f9fa;gap:16px;border-radius:40px;padding:24px;text-align:center;">
+          <span style="font-size:32px;">📱</span>
+          <p style="font-size:13px;color:#374151;font-weight:500;">웹앱을 불러올 수 없습니다</p>
+          <a href="https://market.gopang.net/webapp.html" target="_blank"
+             style="background:#3ecf8e;color:white;padding:10px 20px;border-radius:8px;
+                    font-size:13px;font-weight:600;text-decoration:none;">
+            새 탭에서 열기 →
+          </a>
+        </div>
+        <iframe id="webapp-iframe" title="K-Market 웹앱"
+                allow="camera; microphone; geolocation; clipboard-write"
+                allowfullscreen></iframe>
+      </div>
+      <div class="phone-bottom"><div class="phone-home-bar"></div></div>
+    </div>
+  </div>
+  <div id="modal-label">
+    <span class="modal-label-dot"></span>
+    K-Market 웹앱 · 스마트폰 미리보기
+  </div>
+</div>
+
 </body>
 </html>
-</body></html>
