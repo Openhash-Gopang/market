@@ -1167,7 +1167,20 @@ const CFG = {
 사용자의 구매 의사결정을 돕고, 가격·품질·법적 요건을 분석합니다.
 모든 거래는 PDV에 기록되어 사용자의 재무제표에 반영됩니다.
 한국어로 답변하고, 간결하고 실용적인 조언을 제공하세요.
-판매자 등록, 상품 검색, 가격 비교, AI 공정거래 분석을 지원합니다.`,
+판매자 등록, 상품 검색, 가격 비교, AI 공정거래 분석을 지원합니다.
+
+## 거래 완료 기록 규칙
+사용자가 구체적 금액을 언급하며 구매·판매가 확정된 경우,
+응답 마지막에 반드시 아래 블록을 JSON 형식으로 출력하라:
+
+[TRADE]{"direction":"credit","amount":50000,"item_name":"제주 감귤 10kg","fs_account":"revenue"}[/TRADE]
+
+- direction: 사용자 기준 "credit"(판매·수입) 또는 "debit"(구매·지출)
+- amount: 정수 (원화 기준 숫자만)
+- item_name: 거래 품목명 (30자 이내)
+- fs_account: "revenue"(매출) | "purchase"(매입) | "opex"(경비)
+- 거래 의사 타진 중이거나 금액 미확정이면 블록 출력 안 함
+- 블록은 반드시 응답 맨 마지막에 한 줄로 출력`,
 };
 
 const GWP_REGISTRY = {
@@ -1315,7 +1328,107 @@ async function callAI(userText, imageFile) {
 
   bubble.classList.remove('streaming');
   history.push({ role:'assistant', content: fullText });
+
+  // ── fs_ledger 거래 기록 (TRADE 블록 파싱) ─────────────────
+  await _parseTrade(fullText, userText);
+
   return fullText;
+}
+
+// ── fs_ledger INSERT — market 거래 원장 기록 ─────────────────
+// 설계 원칙: market은 fs_ledger에만 씁니다.
+//            gdc가 fs_ledger를 읽어 재무제표(extra.fs)를 갱신합니다.
+//            시스템 간 직접 호출 없음 — Supabase가 공유 버스.
+async function _recordLedger({ direction, amount, itemName, fsAccount }) {
+  const guid = _user?.guid || _user?.ipv6;
+  if (!guid || !amount || amount <= 0) return null;
+
+  const SBKEY = SUPABASE_KEY;
+  const SBH   = {
+    'apikey':        SBKEY,
+    'Authorization': 'Bearer ' + SBKEY,
+    'Content-Type':  'application/json',
+    'Prefer':        'return=minimal',
+  };
+
+  const txId = crypto.randomUUID();
+  const now  = new Date().toISOString();
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/fs_ledger`, {
+      method: 'POST',
+      headers: SBH,
+      body: JSON.stringify({
+        tx_id:      txId,
+        guid:       guid,
+        counterpart:'market.gopang.net',
+        direction:  direction,
+        amount:     amount,
+        item_name:  itemName,
+        fs_account: fsAccount,
+        memo:       'K-Market AI 거래 자동 기록',
+        tx_at:      now,
+      }),
+    });
+
+    if (res.ok) {
+      console.log('[Market Ledger] ✅', direction, '₮'+amount.toLocaleString(), itemName);
+      return txId;
+    } else {
+      const err = await res.text();
+      console.warn('[Market Ledger] ❌', res.status, err);
+      return null;
+    }
+  } catch(e) {
+    console.warn('[Market Ledger] 전송 실패:', e.message);
+    return null;
+  }
+}
+
+// ── AI 응답에서 [TRADE] 블록 파싱 → fs_ledger 기록 ──────────
+async function _parseTrade(aiText, userText) {
+  const match = aiText.match(/\[TRADE\](.+?)\[\/TRADE\]/s);
+  if (!match) return;
+
+  let trade;
+  try {
+    trade = JSON.parse(match[1].trim());
+  } catch(e) {
+    console.warn('[Market Ledger] TRADE 파싱 실패:', match[1]);
+    return;
+  }
+
+  const { direction, amount, item_name, fs_account } = trade;
+  if (!direction || !amount || !item_name) return;
+
+  const txId = await _recordLedger({
+    direction,
+    amount:    parseInt(amount),
+    itemName:  item_name,
+    fsAccount: fs_account || (direction === 'credit' ? 'revenue' : 'purchase'),
+  });
+
+  if (txId) {
+    // PDV에도 거래 기록
+    await recordPDV({
+      report: {
+        svc:  'kcommerce',
+        type: 'transaction',
+        who:  {
+          ipv6:       _user?.guid || _user?.ipv6,
+          role:       'user',
+          level:      'L0',
+          recipients: ['gopang-pdv'],
+        },
+        when:  { period_start: new Date().toISOString(), period_end: new Date().toISOString() },
+        where: { svc_url: 'https://market.gopang.net/webapp.html' },
+        what:  { summary: \`K-Market 거래 — \${item_name} ₮\${parseInt(amount).toLocaleString()} (\${direction === 'credit' ? '판매' : '구매'})\` },
+        how:   { method: 'K-Market AI 자동 거래 감지 → fs_ledger 기록', tx_id: txId },
+        why:   { goal: '거래 재무제표 반영' },
+      }
+    });
+    console.log('[Market] 거래 PDV 기록 완료:', txId);
+  }
 }
 
 // ── Storage (구 js/services/storage.js) ──────────────────────────
