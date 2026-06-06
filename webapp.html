@@ -2013,7 +2013,7 @@ async function _handlePDVCommand(text) {
 
 // ── PC 대시보드 초기화 ───────────────────────────────────────────
 function _initPCDashboard() {
-  if (!_isPC()) return;
+  return; // K-Market: 대화창 전용 UI — PC 패널 비활성화
 
   // body에 pc-mode 클래스 추가
   document.body.classList.add('pc-mode');
