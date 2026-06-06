@@ -1797,7 +1797,7 @@ async function sendMessage() {
 // ── init() ───────────────────────────────────────────────────────
 async function init(user) {
   _user = user;
-  const USER_GUID = _user.guid;
+  const USER_GUID = _user.guid || _user.ipv6 || 'anonymous';
 
   CFG.system = `# 고팡 AI 비서 SP-00 v9.2\n# GUID: ${USER_GUID}\n\n## 정체성\n진짜 의도 파악 → 4단계 폭포수 처리.\n\n## 의도 파악\n[THINK] 진짜 원하는 것? 1~4단계? [/THINK]\n\n## 14대 영역\\nMKT TAX ECO MED EDU TRN GOV JUS IND ENV CUL SOC IOT\\nMKT=시장거래 TAX=세무납세 ECO=재무금융\\nMKT 트리거: 사다|팔다|구매|주문|상품명직접|시장|재고|찾아줘|얼마 → market.gopang.net 호출n\n## 4단계 폭포수\n1단계 자체해결 → 2단계 전문가 변신 → 3단계 외부AI → 4단계 웹검색\n\n## 응답 형식\n1단계: 간결하게. 2단계↑: [{코드}] {영역명}.\n위치: 시스템 주입 [현재 위치]만 사용.`;
   CFG.system_base = CFG.system;
