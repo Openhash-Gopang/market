@@ -129,9 +129,9 @@
       height: calc(48px + var(--safe-top));
       padding-top: var(--safe-top);
       z-index: 100;
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      justify-content: space-between;
       padding-right: 14px;
       padding-left: 14px;
       gap: 8px;
@@ -139,6 +139,9 @@
       border-bottom: 1px solid var(--sep);
       box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
+    #top-logo { justify-self: start; }
+    #top-bar-title { justify-self: center; }
+    #top-bar-right { justify-self: end; display:flex; align-items:center; gap:4px; }
 
     /* ── PWA 설치 배너 ─────────────────────────────────── */
     .install-banner {
@@ -758,16 +761,29 @@
 
   <!-- ── 상단 바 (빈 영역 + 우상단 버튼만) ───────────── -->
   <div class="top-bar">
-    <!-- 좌측 로고 / 진행 상황 버튼 -->
-    <div id="top-logo" onclick="_onLogoTap()"
-         style="color:var(--label);font-size:15px;font-weight:700;
-                letter-spacing:-0.3px;flex:1;cursor:pointer;
-                display:flex;align-items:center;gap:6px;user-select:none;">
-      <span id="top-logo-text">고팡</span>
+    <!-- 좌측: ← 고팡으로 (탭 닫기) -->
+    <div id="top-logo" onclick="window.close()"
+         style="color:var(--tint);font-size:14px;font-weight:600;
+                cursor:pointer;display:flex;align-items:center;gap:4px;
+                user-select:none;white-space:nowrap;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M5 12l7 7M5 12l7-7"/>
+      </svg>
+      <span id="top-logo-text">고팡으로</span>
       <span id="top-progress-dot" style="display:none;width:7px;height:7px;
             border-radius:50%;background:var(--yellow);
             animation:pulse-dot 1.5s ease-in-out infinite;flex-shrink:0;"></span>
     </div>
+    <!-- 중앙: K-Market -->
+    <div id="top-bar-title"
+         style="font-size:16px;font-weight:700;color:var(--label);
+                letter-spacing:-0.3px;">
+      K-Market
+    </div>
+    <!-- 우측 버튼 그룹 -->
+    <div id="top-bar-right">
     <!-- 홈 화면 설치 버튼 (미설치 시에만 표시) -->
     <button class="top-btn" id="btn-install" onclick="requestInstall()"
             title="홈 화면에 설치" style="display:none">
@@ -807,7 +823,8 @@
                  a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </button>
-  </div>
+    </div><!-- /top-bar-right -->
+  </div><!-- /top-bar -->
 
   <!-- ── 메시지 목록 ─────────────────────────────────── -->
   <div id="message-list" style="background:var(--bg)"></div>
@@ -1422,7 +1439,7 @@ async function _parseTrade(aiText, userText) {
         },
         when:  { period_start: new Date().toISOString(), period_end: new Date().toISOString() },
         where: { svc_url: 'https://market.gopang.net/webapp.html' },
-        what:  { summary: \`K-Market 거래 — \${item_name} ₮\${parseInt(amount).toLocaleString()} (\${direction === 'credit' ? '판매' : '구매'})\` },
+        what:  { summary: 'K-Market 거래 — ' + item_name + ' ₮' + parseInt(amount).toLocaleString() + ' (' + (direction === 'credit' ? '판매' : '구매') + ')' },
         how:   { method: 'K-Market AI 자동 거래 감지 → fs_ledger 기록', tx_id: txId },
         why:   { goal: '거래 재무제표 반영' },
       }
@@ -1852,6 +1869,35 @@ async function init(user) {
 
   updateSendBtn();
   console.info('[고팡] v4.0 초기화 완료 — GUID:', USER_GUID.slice(0,8)+'…');
+
+  // ── GWP ctx 수신 → 사용자 지시 자동 전송 ──────────────────
+  // gopang webapp이 [GWP:kcommerce] 태그로 새 탭을 열 때 ctx 파라미터로 원본 지시를 전달함
+  const _gwpParams  = new URLSearchParams(location.search);
+  const _gwpCtxRaw  = _gwpParams.get('ctx') || '';
+  const _gwpCtxEnc  = _gwpParams.get('ctx_enc');
+  const _gwpIsGWP   = _gwpParams.get('gwp') === '1';
+
+  if (_gwpIsGWP && _gwpCtxRaw) {
+    try {
+      // Base64 → 원본 한국어 지시 복원
+      const _gwpCtx = _gwpCtxEnc === 'b64'
+        ? decodeURIComponent(escape(atob(_gwpCtxRaw)))
+        : decodeURIComponent(_gwpCtxRaw);
+
+      console.info('[GWP] ctx 수신:', _gwpCtx);
+
+      // 입력창에 지시 주입 후 자동 전송
+      const _msgInput = document.getElementById('msg-input');
+      if (_msgInput && _gwpCtx) {
+        _msgInput.value = _gwpCtx;
+        updateSendBtn();
+        // UI 렌더링 후 전송 (100ms 딜레이)
+        setTimeout(() => sendMessage(), 100);
+      }
+    } catch(e) {
+      console.warn('[GWP] ctx 복원 실패:', e.message);
+    }
+  }
 }
 
 
