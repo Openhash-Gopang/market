@@ -1180,24 +1180,10 @@ const CFG = {
   model:   'deepseek-chat',
   apiKey:  '',
   proxyURL: PROXY_BASE + '/deepseek',
-  systemPrompt: `당신은 K-Market AI 비서입니다.
-사용자의 구매 의사결정을 돕고, 가격·품질·법적 요건을 분석합니다.
-모든 거래는 PDV에 기록되어 사용자의 재무제표에 반영됩니다.
-한국어로 답변하고, 간결하고 실용적인 조언을 제공하세요.
-판매자 등록, 상품 검색, 가격 비교, AI 공정거래 분석을 지원합니다.
-
-## 거래 완료 기록 규칙
-사용자가 구체적 금액을 언급하며 구매·판매가 확정된 경우,
-응답 마지막에 반드시 아래 블록을 JSON 형식으로 출력하라:
-
-[TRADE]{"direction":"credit","amount":50000,"item_name":"제주 감귤 10kg","fs_account":"revenue"}[/TRADE]
-
-- direction: 사용자 기준 "credit"(판매·수입) 또는 "debit"(구매·지출)
-- amount: 정수 (원화 기준 숫자만)
-- item_name: 거래 품목명 (30자 이내)
-- fs_account: "revenue"(매출) | "purchase"(매입) | "opex"(경비)
-- 거래 의사 타진 중이거나 금액 미확정이면 블록 출력 안 함
-- 블록은 반드시 응답 맨 마지막에 한 줄로 출력`,
+  // ★ SP는 GitHub raw URL 동적 로드 — webapp 수정 없이 갱신 가능
+  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_0.txt',
+  systemPrompt: null, // 런타임에 loadSystemPrompt()로 채워짐
+  systemPromptFallback: '당신은 K-Market AI 구매 에이전트입니다. 한국어로 답변하세요.',
 };
 
 const GWP_REGISTRY = {
@@ -1290,11 +1276,29 @@ async function initAI(user) {}
 
 function classifyDomain(text) { return 'general'; }
 
+// ── SP 동적 로드 ─────────────────────────────────────────────
+async function loadSystemPrompt() {
+  if (CFG.systemPrompt) return CFG.systemPrompt; // 캐시
+  try {
+    const r = await fetch(CFG.systemPromptURL + '?t=' + Date.now());
+    if (r.ok) {
+      CFG.systemPrompt = await r.text();
+      console.log('[SP] K-Market SP 로드 완료:', CFG.systemPromptURL);
+      return CFG.systemPrompt;
+    }
+  } catch(e) {
+    console.warn('[SP] SP 로드 실패, 폴백 사용:', e.message);
+  }
+  CFG.systemPrompt = CFG.systemPromptFallback;
+  return CFG.systemPrompt;
+}
+
 async function callAI(userText, imageFile) {
   history.push({ role:'user', content: userText });
 
+  const sp = await loadSystemPrompt();
   const messages = [
-    { role:'system', content: CFG.systemPrompt + buildLocNote() },
+    { role:'system', content: sp + buildLocNote() },
     ...history.slice(-12)
   ];
 
