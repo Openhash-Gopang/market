@@ -1443,12 +1443,14 @@ async function callAI(userText, imageFile) {
         console.log('[Market Search] 결과:', rows.length, '건');
         if (rows.length > 0) {
           searchResult = rows.map((r, i) => {
-            const menu = r.extra?.menu?.[0];
-            const price = menu ? ` | ${menu.name} ₩${(menu.price||0).toLocaleString()}` : '';
-            const gdc   = r.extra?.accepts_gdc ? ' | GDC ✅' : ' | GDC ❌';
-            const trust = r.extra?.trust_level  ? ` | ${r.extra.trust_level}` : '';
-            const rating = r.extra?.rating       ? ` | ★${r.extra.rating}` : '';
-            return `${i+1}. ${r.display_name} (${r.address_short||r.location||''})${price}${rating}${trust}${gdc} [guid:${r.primary_guid||r.entity_id}]`;
+            // RPC 반환 컬럼: name, rating_avg, gdc_accepted, trust_level, address, services
+            const svc    = r.services?.[0] || '';
+            const price  = svc ? ` | ${svc}` : '';
+            const gdc    = r.gdc_accepted ? ' | GDC ✅' : ' | GDC ❌';
+            const trust  = r.trust_level  ? ` | ${r.trust_level}` : '';
+            const rating = r.rating_avg   ? ` | ★${r.rating_avg}` : '';
+            const addrShort = (r.address || '').replace('제주특별자치도 ', '').replace('제주시 ', '');
+            return `${i+1}. ${r.name} (${addrShort})${price}${rating}${trust}${gdc} [guid:${r.primary_guid}]`;
           }).join('\n');
         }
       } else {
