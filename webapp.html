@@ -2131,8 +2131,9 @@ async function sendMessage() {
 
   if(gwpActive){ gwpForwardInput(text,capturedFile); return; }
 
-  // GWP 매칭
-  if(text) {
+  // GWP 매칭 — GWP 모드(gwp=1)로 진입한 경우 재귀 방지
+  const _isGwpMode = new URLSearchParams(location.search).get('gwp') === '1';
+  if(text && !_isGwpMode) {
     const svc=gwpMatch(text);
     if(svc) {
       if(capturedFile?.type.startsWith('image/')) {
