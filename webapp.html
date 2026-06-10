@@ -1443,14 +1443,16 @@ async function callAI(userText, imageFile) {
         console.log('[Market Search] 결과:', rows.length, '건');
         if (rows.length > 0) {
           searchResult = rows.map((r, i) => {
-            // RPC 반환 컬럼: name, rating_avg, gdc_accepted, trust_level, address, services
+            // RPC 반환 컬럼: name, rating_avg, gdc_accepted, trust_level, address, services, extra
             const svc    = r.services?.[0] || '';
             const price  = svc ? ` | ${svc}` : '';
             const gdc    = r.gdc_accepted ? ' | GDC ✅' : ' | GDC ❌';
             const trust  = r.trust_level  ? ` | ${r.trust_level}` : '';
             const rating = r.rating_avg   ? ` | ★${r.rating_avg}` : '';
             const addrShort = (r.address || '').replace('제주특별자치도 ', '').replace('제주시 ', '');
-            return `${i+1}. ${r.name} (${addrShort})${price}${rating}${trust}${gdc} [guid:${r.primary_guid}]`;
+            // handle 포함 (profile.html GWP 팝업 연결용)
+            const handleStr = r.handle ? ` [handle:${r.handle}]` : '';
+            return `${i+1}. ${r.name} (${addrShort})${price}${rating}${trust}${gdc}${handleStr} [guid:${r.primary_guid}]`;
           }).join('\n');
         }
       } else {
@@ -1461,7 +1463,7 @@ async function callAI(userText, imageFile) {
 
       // 검색 결과를 user 메시지로 주입 (DeepSeek: 중간 system role 미지원)
       // BUG FIX: history.push(fullText)를 try 블록 안에서만 1회 수행
-      const searchInject = `[검색결과] ${searchResult}\n\n위 결과로 판매자를 추천하고, 선택 시 [TRADE] 블록 (seller_guid 필수)을 출력하세요.`;
+      const searchInject = `[검색결과] ${searchResult}\n\n위 결과로 판매자를 표 형태로 추천하세요. 사용자가 판매자를 선택하면 [TRADE] 블록을 출력하세요 (seller_guid 필수). 가격·메뉴는 업체 페이지에서 직접 확인하므로 임의로 제시하지 마세요.`;
       history.push({ role:'assistant', content: fullText });
       _searchHistoryPushed = true;
       history.push({ role:'user',      content: searchInject });
@@ -1585,121 +1587,99 @@ async function _recordLedger({ direction, amount, itemName, fsAccount, sellerGui
     return null;
   }
 }
-// ── AI 응답에서 [TRADE] 블록 파싱 → fs_ledger 기록 ──────────
-// v2.2: fs_account 표준 코드, seller_guid 필수 확인, session_id 포함
-// prevSettleHash / blockHash / blockId 는 gopang-wallet.js(GWP_SIGN_REQUEST)가
-// 자동 주입하는 값이므로 이 단계에서는 null — Worker/L1 완료 후 채워짐
+// ── AI 응답에서 [TRADE] 블록 파싱 → profile.html GWP 팝업 오픈 ──
+// STEP 18 v2.0: _parseTrade()는 거래 확정 신호를 profile.html로 전달하는 역할만 수행.
+// fs_ledger 기록은 L1 검증 → Worker /biz/order RPC 경로가 담당.
+// _recordLedger() 직접 호출 제거.
 async function _parseTrade(aiText, userText) {
   const match = aiText.match(/\[TRADE\]([\s\S]+?)\[\/TRADE\]/);
   if (!match) return;
 
-  // v2.2 다중행 YAML형 파싱 지원
-  let trade;
+  // YAML형 [TRADE] 블록 파싱
+  let trade = {};
   const raw = match[1].trim();
   try {
     trade = JSON.parse(raw);
   } catch(_) {
-    // YAML형 [TRADE] 블록 파싱 (SP-KMARKET v2.2 다중행 형식)
-    trade = {};
     for (const line of raw.split('\n')) {
       const m = line.match(/^\s*([\w_]+):\s*(.+)$/);
       if (m) trade[m[1].trim()] = m[2].trim();
     }
-    // items 배열: items: 섹션 이후에서만 name: 추출 (seller_name 오매칭 방지)
     if (!trade.item_name) {
       const itemsSection = raw.includes('items:') ? raw.split('items:').slice(1).join('items:') : raw;
-      const nameM  = itemsSection.match(/name:\s*(.+)/);
-      const priceM = itemsSection.match(/price:\s*(\d+)/);
-      const qtyM   = itemsSection.match(/quantity:\s*(\d+)/);
+      const nameM = itemsSection.match(/\bname:\s*(.+)/);
       if (nameM) trade.item_name = nameM[1].trim();
-      if (priceM && qtyM) trade.amount = parseInt(priceM[1]) * parseInt(qtyM[1]);
     }
-    // total 우선 사용 (합계)
     if (trade.total) trade.amount = parseInt(trade.total);
-    // fs_account_buyer → fs_account
     if (trade.fs_account_buyer) trade.fs_account = trade.fs_account_buyer;
   }
 
-  const {
-    direction, amount, item_name, name,
-    fs_account, fs_account_buyer,
-    seller_guid, buyer_guid,
-    total,
-  } = trade;
-
-  // item_name 폴백: YAML 파싱 시 items 내부 name: 이 trade.name으로 들어오는 경우 대응
+  const { seller_guid, seller_name, item_name, name, total, amount } = trade;
   const resolvedItemName = item_name || name;
+  const resolvedAmount   = parseInt(total || amount || 0);
 
-  const resolvedAmount = parseInt(total || amount);
-  if (!resolvedAmount || resolvedAmount <= 0) return;
-  if (!resolvedItemName) { console.warn('[Market] TRADE item_name 없음'); return; }
-
-  // seller_guid 없으면 경고 후 진행 (시나리오 F: 사업 경비 등 예외)
+  // seller_guid 없으면 경비/수동 거래 (시나리오 F)
   if (!seller_guid || seller_guid === 'none') {
-    console.warn('[Market] seller_guid 없음 — 경비/수동 거래로 처리');
+    console.warn('[Market] seller_guid 없음 — 경비/수동 거래');
+    return;
+  }
+  if (!resolvedItemName || !resolvedAmount) {
+    console.warn('[Market] TRADE 필수 필드 부족');
+    return;
   }
 
-  // fs_account 표준 코드 매핑 (구버전 코드 → 표준 코드 변환 보호)
-  const fsAccountMap = {
-    'purchase':    'pl-purchase',
-    'revenue':     'pl-revenue',
-    'opex':        'pl-opex',
-    'pl-purchase': 'pl-purchase',
-    'pl-revenue':  'pl-revenue',
-    'pl-opex':     'pl-opex',
-    'pl-platform_fee': 'pl-platform_fee',
-  };
-  const resolvedFsAccount = fsAccountMap[fs_account || fs_account_buyer]
-    || (direction === 'credit' ? 'pl-revenue' : 'pl-purchase');
+  console.log('[Market] TRADE 감지 → profile.html GWP 팝업 오픈', seller_guid);
 
-  const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
-  const resolvedDirection = direction || 'debit';
+  // ── profile.html GWP 팝업 오픈 (STEP 18) ──────────────────────
+  // handle이 검색 결과에 포함된 경우 사용, 없으면 guid로 접근
+  const handleMatch = aiText.match(/\[handle:([^\]]+)\]/);
+  const handle = handleMatch ? handleMatch[1] : '';
+  const profileParam = handle
+    ? 'handle=' + encodeURIComponent(handle)
+    : 'guid='   + encodeURIComponent(seller_guid);
+  const profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam;
 
-  // prevSettleHash / blockHash / blockId:
-  //   gopang-wallet.js가 GWP_SIGN_REQUEST 처리 시 자동 주입.
-  //   이 시점(_parseTrade)에서는 null — L1 검증 완료 후 GWP_DONE으로 수신됨.
-  const txId = await _recordLedger({
-    direction:      resolvedDirection,
-    amount:         resolvedAmount,
-    itemName:       resolvedItemName,
-    fsAccount:      resolvedFsAccount,
-    sellerGuid:     (seller_guid && seller_guid !== 'none') ? seller_guid : null,
-    buyerGuid:      resolvedDirection === 'debit' ? buyerGuid : (buyer_guid || null),
-    txId:           null,
-    prevSettleHash: null,   // gopang-wallet.js 자동 주입 (GWP_SIGN_REQUEST)
-    blockHash:      null,   // L1 동기 앵커링 완료 후 GWP_DONE으로 수신
-    blockId:        null,   // 동상
-  });
+  const popup = window.open(profileURL, 'gopang-profile', 'width=480,height=780,scrollbars=yes,resizable=no');
 
-  if (txId) {
-    const now = new Date().toISOString();
-    await recordPDV({
+  if (!popup) {
+    // 팝업 차단 시 → 채팅에 링크 표시
+    appendMsg('ai',
+      '📱 **' + (seller_name || '업체') + '** 페이지를 열어 메뉴를 선택하고 주문해 주세요:\n' +
+      profileURL
+    );
+    console.warn('[Market] 팝업 차단됨 — 링크 표시');
+    return;
+  }
+
+  // GWP_DONE 수신 대기 (profile.html에서 결제 완료 시 전송)
+  const gwpHandler = (e) => {
+    if (e.origin !== 'https://users.gopang.net' && e.origin !== 'https://gopang.net') return;
+    if (e.data?.type !== 'GWP_DONE') return;
+    window.removeEventListener('message', gwpHandler);
+
+    const summary = e.data.summary || '주문 완료';
+    appendMsg('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
+
+    // PDV 보고 (GWP_DONE 수신 후 — reporter_svc: kmarket)
+    const pdv = e.data.pdvData || {};
+    recordPDV({
       report: {
         svc:          'kcommerce',
-        session_id:   txId,           // STEP 11: session_id로 중복 방지
-        reporter_svc: 'kmarket',      // STEP 11: 최하위 이행 시스템 보고
+        session_id:   seller_guid + '-' + Date.now(),
+        reporter_svc: 'kmarket',
         type:         'transaction',
-        who: {
-          ipv6:       buyerGuid,
-          role:       'user',
-          level:      'L0',
-          recipients: ['gopang-pdv'],
-        },
-        when:  { period_start: now, period_end: now },
-        where: { svc_url: 'https://market.gopang.net/webapp.html' },
-        what:  {
-          summary: 'K-Market 거래 — ' + resolvedItemName
-                   + ' ₮' + resolvedAmount.toLocaleString()
-                   + ' (' + (resolvedDirection === 'credit' ? '판매' : '구매') + ')',
-          seller_guid: seller_guid || null,
-          tx_id:       txId,
-        },
-        how:   { method: 'K-Market AI 자동 거래 감지 → fs_ledger 기록', tx_id: txId },
-        why:   { goal: '거래 재무제표 반영' },
+        who:  { ipv6: _user?.primary_guid || _user?.guid, role: 'user', level: 'L0', recipients: ['gopang-pdv'] },
+        when: { period_start: new Date().toISOString(), period_end: new Date().toISOString() },
+        where:{ svc_url: 'https://market.gopang.net/webapp.html' },
+        what: { summary, seller_guid, tx_id: null },
+        how:  { method: 'profile.html GWP 결제 완료' },
+        why:  { goal: '거래 재무제표 반영' },
       }
-    });
-    console.log('[Market] 거래 PDV 기록 완료:', txId, '| seller:', seller_guid || '없음');
-  }
+    }).catch(err => console.warn('[PDV]', err));
+
+    console.log('[Market] GWP_DONE 수신:', summary);
+  };
+  window.addEventListener('message', gwpHandler);
 }
 
 // ── Reporter (구 js/fiil/reporter.js) ────────────────────────────
