@@ -1200,6 +1200,7 @@ const EXPERT_KEYWORDS = [];
 let userLocation   = null;
 let locationReady  = false;
 let locationPending = false;
+let userAddress    = null;   // 역지오코딩 주소 캐시 {dong, sigungu, sido}
 
 function scheduleLocation() {
   if (locationPending || locationReady) return;
@@ -1209,16 +1210,41 @@ function scheduleLocation() {
 function initLocation() {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
-    pos => {
+    async pos => {
       userLocation  = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       locationReady = true; locationPending = false;
+      // 역지오코딩 — Kakao coord2address (Worker /geocode 경유, CORS 우회)
+      try {
+        const res = await fetch(
+          `${PROXY_BASE}/geocode?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`
+        );
+        if (res.ok) {
+          const geo = await res.json();
+          // Kakao coord2address 응답 구조:
+          // documents[0].address.{region_1depth_name, region_2depth_name, region_3depth_name}
+          const addr = geo.documents?.[0]?.address || geo.documents?.[0]?.road_address || {};
+          userAddress = {
+            dong:    addr.region_3depth_name || addr.region_3depth_h_name || '',
+            sigungu: addr.region_2depth_name || '',
+            sido:    addr.region_1depth_name || '',
+            full:    [addr.region_1depth_name, addr.region_2depth_name, addr.region_3depth_name]
+                       .filter(Boolean).join(' '),
+          };
+          console.log('[Location] Kakao 주소:', userAddress.full || '주소 없음');
+        }
+      } catch(e) {
+        console.warn('[Location] 역지오코딩 실패:', e.message);
+      }
     },
     () => { locationPending = false; }
   );
 }
 function buildLocNote() {
   if (!userLocation) return '';
-  return `\n[위치: 위도 ${userLocation.lat.toFixed(4)}, 경도 ${userLocation.lng.toFixed(4)}]`;
+  const addrStr = userAddress
+    ? ` (${[userAddress.sido, userAddress.sigungu, userAddress.dong].filter(Boolean).join(' ')})`
+    : '';
+  return `\n[위치: 위도 ${userLocation.lat.toFixed(4)}, 경도 ${userLocation.lng.toFixed(4)}${addrStr}]`;
 }
 function onLocationUpdate(cb) { /* 단순 폴링 대체 */ }
 
@@ -1371,18 +1397,27 @@ async function callAI(userText, imageFile) {
       // 버블에 검색 중 표시
       _updateStreamBubble(bubble, fullText.replace(/\[SEARCH\][\s\S]*?\[\/SEARCH\]/, '\n🔍 판매자 검색 중…'));
 
-      const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/search_entities`, {
+      // address 오버라이드: AI가 추상적 문자열 대신 실제 GPS 주소 사용
+      const _resolvedAddr = (() => {
+        const aiAddr = (searchParams.address || '').trim();
+        // AI가 추상 표현을 쓴 경우 실제 주소로 대체
+        const isAbstract = !aiAddr || ['사용자 현재 위치','현재 위치','내 위치','현위치','위치'].some(v => aiAddr.includes(v));
+        if (isAbstract && userAddress) {
+          return userAddress.dong || userAddress.sigungu || userAddress.sido || '';
+        }
+        return aiAddr;
+      })();
+      console.log('[Market Search] 주소 확정:', _resolvedAddr || '(없음)');
+
+      // PROXY_BASE/search 경유 — Worker가 SUPABASE_KEY 주입 (anon key 브라우저 노출 방지)
+      const rpcRes = await fetch(`${PROXY_BASE}/search`, {
         method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_KEY,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           // 실제 DB 함수 시그니처 (PGRST202 hint 기준)
           p_keyword:      searchParams.keyword    || '',
           p_occupation:   searchParams.occupation || '',
-          p_address:      searchParams.address    || '',
+          p_address:      _resolvedAddr,
           p_entity_type:  'org',
           p_limit:        5,
           p_offset:       0,
@@ -1397,8 +1432,8 @@ async function callAI(userText, imageFile) {
           p_l1_node:      null,
           p_l2_node:      null,
           p_l3_node:      null,
-          p_lat:          null,
-          p_lng:          null,
+          p_lat:          userLocation?.lat || null,
+          p_lng:          userLocation?.lng || null,
         }),
       });
 
