@@ -1181,7 +1181,7 @@ const CFG = {
   apiKey:  '',
   proxyURL: PROXY_BASE + '/deepseek',
   // ★ SP는 GitHub raw URL 동적 로드 — webapp 수정 없이 갱신 가능
-  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_2.txt',
+  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_3.txt',
   systemPrompt: null, // 런타임에 loadSystemPrompt()로 채워짐
   systemPromptFallback: '당신은 K-Market AI 구매 에이전트입니다. 한국어로 답변하세요.',
 };
@@ -1379,21 +1379,26 @@ async function callAI(userText, imageFile) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          p_keyword:    searchParams.keyword  || '',
-          p_occupation: searchParams.occupation || '',
-          p_address:    searchParams.address   || '',
-          p_limit:      5,
-          p_offset:     0,
-          p_entity_type: 'org',
-          p_requester_ipv6: _user?.guid || '',
-          // 나머지 파라미터 기본값
-          p_min_rating: null, p_max_rating: null,
-          p_trust_level: null, p_accepts_gdc: null,
-          p_lang: 'ko', p_region_code: null,
-          p_entity_subtype: null, p_tag: null,
-          p_sort_by: 'rating', p_sort_dir: 'desc',
-          p_include_menu: true, p_requester_role: 'user',
-          p_exclude_self: true,
+          // 실제 DB 함수 시그니처 (PGRST202 hint 기준)
+          p_keyword:      searchParams.keyword    || '',
+          p_occupation:   searchParams.occupation || '',
+          p_address:      searchParams.address    || '',
+          p_entity_type:  'org',
+          p_limit:        5,
+          p_offset:       0,
+          p_lang_code:    'ko',
+          p_sort:         'rating',
+          p_trust_min:    null,
+          p_gdc_only:     null,
+          p_exclude_guid: _user?.guid || null,
+          p_handle:       null,
+          p_nickname:     null,
+          p_primary_guid: null,
+          p_l1_node:      null,
+          p_l2_node:      null,
+          p_l3_node:      null,
+          p_lat:          null,
+          p_lng:          null,
         }),
       });
 
@@ -1579,15 +1584,18 @@ async function _parseTrade(aiText, userText) {
   }
 
   const {
-    direction, amount, item_name,
+    direction, amount, item_name, name,
     fs_account, fs_account_buyer,
     seller_guid, buyer_guid,
     total,
   } = trade;
 
+  // item_name 폴백: YAML 파싱 시 items 내부 name: 이 trade.name으로 들어오는 경우 대응
+  const resolvedItemName = item_name || name;
+
   const resolvedAmount = parseInt(total || amount);
   if (!resolvedAmount || resolvedAmount <= 0) return;
-  if (!item_name) { console.warn('[Market] TRADE item_name 없음'); return; }
+  if (!resolvedItemName) { console.warn('[Market] TRADE item_name 없음'); return; }
 
   // seller_guid 없으면 경고 후 진행 (시나리오 F: 사업 경비 등 예외)
   if (!seller_guid || seller_guid === 'none') {
@@ -1616,7 +1624,7 @@ async function _parseTrade(aiText, userText) {
   const txId = await _recordLedger({
     direction:      resolvedDirection,
     amount:         resolvedAmount,
-    itemName:       item_name,
+    itemName:       resolvedItemName,
     fsAccount:      resolvedFsAccount,
     sellerGuid:     (seller_guid && seller_guid !== 'none') ? seller_guid : null,
     buyerGuid:      resolvedDirection === 'debit' ? buyerGuid : (buyer_guid || null),
@@ -1643,7 +1651,7 @@ async function _parseTrade(aiText, userText) {
         when:  { period_start: now, period_end: now },
         where: { svc_url: 'https://market.gopang.net/webapp.html' },
         what:  {
-          summary: 'K-Market 거래 — ' + item_name
+          summary: 'K-Market 거래 — ' + resolvedItemName
                    + ' ₮' + resolvedAmount.toLocaleString()
                    + ' (' + (resolvedDirection === 'credit' ? '판매' : '구매') + ')',
           seller_guid: seller_guid || null,
