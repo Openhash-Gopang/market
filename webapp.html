@@ -1363,6 +1363,7 @@ async function callAI(userText, imageFile) {
   // ── [SEARCH] 태그 감지 → search_entities RPC → 결과 재주입 ──
   const searchMatch = fullText.match(/\[SEARCH\](.+?)\[\/SEARCH\]/s);
   if (searchMatch) {
+    let _searchHistoryPushed = false;   // 중복 push 방지 flag
     try {
       const searchParams = JSON.parse(searchMatch[1].trim());
       console.log('[Market Search] RPC 호출:', searchParams);
@@ -1416,10 +1417,12 @@ async function callAI(userText, imageFile) {
         searchResult = `검색 실패 (${rpcRes.status})`;
       }
 
-      // 검색 결과를 시스템 메시지로 주입하여 AI 재호출
-      const systemMsg = `[users.gopang.net 검색 결과]\n${searchResult}\n\n위 결과를 바탕으로 판매자를 추천하고, 사용자가 선택하면 [TRADE] 블록을 출력하세요. seller_guid는 [guid:xxx] 값을 사용하세요.`;
+      // 검색 결과를 user 메시지로 주입 (DeepSeek: 중간 system role 미지원)
+      // BUG FIX: history.push(fullText)를 try 블록 안에서만 1회 수행
+      const searchInject = `[검색결과] ${searchResult}\n\n위 결과로 판매자를 추천하고, 선택 시 [TRADE] 블록 (seller_guid 필수)을 출력하세요.`;
       history.push({ role:'assistant', content: fullText });
-      history.push({ role:'system',    content: systemMsg });
+      _searchHistoryPushed = true;
+      history.push({ role:'user',      content: searchInject });
 
       // AI 재호출 (검색 결과 반영)
       const sp2 = await loadSystemPrompt();
@@ -1456,17 +1459,32 @@ async function callAI(userText, imageFile) {
             } catch {}
           }
         }
+        bubble2.classList.remove('streaming');
+        history.push({ role:'assistant', content: fullText2 });
+        await _parseTrade(fullText2, userText);
+        return fullText2;
+      } else {
+        // res2 실패 — 빈 버블 제거 후 fallback
+        bubble2.remove();
+        console.warn('[Market Search] AI 재호출 실패:', res2.status);
+        // try/catch 밖 공통 경로로 fallback하지 않도록 여기서 push 후 return
+        history.push({ role:'assistant', content: fullText2 || '검색 결과를 처리하는 중 오류가 발생했습니다.' });
+        return fullText2;
       }
-      bubble2.classList.remove('streaming');
-      history.push({ role:'assistant', content: fullText2 });
-      await _parseTrade(fullText2, userText);
-      return fullText2;
     } catch(e) {
       console.warn('[Market Search] 오류:', e.message);
+      // catch 진입 시 flag 확인 — push 안 된 경우만 push
+      if (!_searchHistoryPushed) {
+        history.push({ role:'assistant', content: fullText });
+        _searchHistoryPushed = true;
+      }
     }
   }
 
-  history.push({ role:'assistant', content: fullText });
+  // [SEARCH] 없는 일반 응답 경로
+  if (!searchMatch) {
+    history.push({ role:'assistant', content: fullText });
+  }
 
   // ── fs_ledger 거래 기록 (TRADE 블록 파싱) ─────────────────
   await _parseTrade(fullText, userText);
