@@ -1525,7 +1525,34 @@ async function callAI(userText, imageFile) {
     }
   }
 
-  // ── [OPEN_PROFILE] 태그 감지 → profile.html GWP 팝업 오픈 ──
+  // ── profile.html → market → gopang 서명 포워딩 ──────────
+// profile.html은 market을 opener로 열었으므로
+// GWP_SIGN_REQUEST를 market이 수신 → gopang 탭으로 포워딩
+window.addEventListener('message', (e) => {
+  const allowed = ['https://users.gopang.net'];
+  if (!allowed.includes(e.origin)) return;
+  if (e.data?.type !== 'GWP_SIGN_REQUEST') return;
+
+  console.log('[Market] GWP_SIGN_REQUEST 수신 → gopang 탭 포워딩');
+
+  // gopang 탭(자신의 opener)으로 포워딩
+  if (window.opener && !window.opener.closed) {
+    window.opener.postMessage(e.data, 'https://gopang.net');
+  } else {
+    console.warn('[Market] gopang opener 없음 — 포워딩 실패');
+  }
+
+  // GWP_SIGN_RESPONSE를 gopang → market → profile 역방향 포워딩
+  const signResponseHandler = (ev) => {
+    if (ev.origin !== 'https://gopang.net') return;
+    if (ev.data?.type !== 'GWP_SIGN_RESPONSE' &&
+        ev.data?.type !== 'GWP_SIGN_CANCELLED') return;
+    window.removeEventListener('message', signResponseHandler);
+    console.log('[Market] GWP_SIGN_RESPONSE 수신 → profile 포워딩');
+    e.source?.postMessage(ev.data, e.origin);
+  };
+  window.addEventListener('message', signResponseHandler);
+});
   // v2.4: [TRADE] 블록 대체. 판매자 선택 즉시 업체 페이지 연결.
   const profileTagMatch = fullText.match(/\[OPEN_PROFILE:(\{[^}]+\})\]/);
   if (profileTagMatch) {
