@@ -1317,7 +1317,7 @@ function classifyDomain(text) { return 'general'; }
 async function loadSystemPrompt() {
   if (CFG.systemPrompt) return CFG.systemPrompt; // 캐시
   try {
-    const r = await fetch(CFG.systemPromptURL + '?t=' + Date.now());
+    const r = await fetch(CFG.systemPromptURL);
     if (r.ok) {
       CFG.systemPrompt = await r.text();
       console.log('[SP] K-Market SP 로드 완료:', CFG.systemPromptURL);
@@ -1331,11 +1331,14 @@ async function loadSystemPrompt() {
 }
 
 async function callAI(userText, imageFile) {
-  history.push({ role:'user', content: userText });
+  // 위치 정보는 system이 아닌 user 메시지 앞에 추가 (KV Cache 유지)
+  const locNote = buildLocNote();
+  const userTextWithLoc = locNote ? `${locNote}\n${userText}` : userText;
+  history.push({ role:'user', content: userTextWithLoc });
 
   const sp = await loadSystemPrompt();
   const messages = [
-    { role:'system', content: sp + buildLocNote() },
+    { role:'system', content: sp },   // 고정 — KV Cache 활용
     ...history.slice(-12)
   ];
 
@@ -1471,7 +1474,7 @@ async function callAI(userText, imageFile) {
       // AI 재호출 (검색 결과 반영)
       const sp2 = await loadSystemPrompt();
       const messages2 = [
-        { role:'system', content: sp2 + buildLocNote() },
+        { role:'system', content: sp2 },   // 고정 — KV Cache 유지
         ...history.slice(-14),
       ];
       const bubble2 = _createStreamBubble();
