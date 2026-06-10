@@ -1531,9 +1531,6 @@ async function _parseTrade(aiText, userText) {
     console.log('[Market] 거래 PDV 기록 완료:', txId, '| seller:', seller_guid || '없음');
   }
 }
-  // market webapp은 사진 업로드 미지원 (필요시 Supabase Storage 연동)
-  return null;
-}
 
 // ── Reporter (구 js/fiil/reporter.js) ────────────────────────────
 async function initReporter(user) {}
