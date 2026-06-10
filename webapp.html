@@ -1172,7 +1172,7 @@
 
 // ── config (구 config.js) ─────────────────────────────────────────
 const SUPABASE_URL  = 'https://ebbecjfrwaswbdybbgiu.supabase.co';
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViYmVjamZyd2Fzd2JkeWJiZ2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk4MjQ5MDAsImV4cCI6MjAyNTQwMDkwMH0.placeholder';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViYmVjamZyd2Fzd2JkeWJiZ2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NjE5ODQsImV4cCI6MjA5NTEzNzk4NH0.H2ahQKtWdSke04Pdi3hDY86pdTx7UUKPUpQMlS_zciA';
 const PROXY_BASE    = 'https://gopang-proxy.tensor-city.workers.dev';
 const KLAW_COOLDOWN_MS = 3000;
 
@@ -1181,7 +1181,7 @@ const CFG = {
   apiKey:  '',
   proxyURL: PROXY_BASE + '/deepseek',
   // ★ SP는 GitHub raw URL 동적 로드 — webapp 수정 없이 갱신 가능
-  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_0.txt',
+  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_2.txt',
   systemPrompt: null, // 런타임에 loadSystemPrompt()로 채워짐
   systemPromptFallback: '당신은 K-Market AI 구매 에이전트입니다. 한국어로 답변하세요.',
 };
@@ -1223,17 +1223,28 @@ function buildLocNote() {
 function onLocationUpdate(cb) { /* 단순 폴링 대체 */ }
 
 // ── PDV (구 js/services/pdv.js) ──────────────────────────────────
+// STEP 21: recordPDV 표준 정렬 — Worker /pdv/report 경유 (P2 원칙)
+// 호출 형식: recordPDV({ report: { svc, who, when, where, what, how, why, ... } })
+// gopang-app.js의 window.recordPDV 표준과 동일한 시그니처·전송 형식 유지
 let _pdvUser = null;
 async function initPDV(user) { _pdvUser = user; }
-async function recordPDV(entry) {
-  if (!_pdvUser) return;
+async function recordPDV({ report }) {
+  if (!report) { console.warn('[PDV] report 누락 — 무시'); return; }
   try {
-    await fetch(PROXY_BASE + '/pdv/report', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ user_guid: _pdvUser.guid, source:'market', ...entry })
+    const res = await fetch(PROXY_BASE + '/pdv/report', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ report }),
     });
-  } catch(e) { console.warn('[PDV]', e); }
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.status);
+      console.warn('[PDV] Worker 오류:', res.status, err);
+    } else {
+      console.info('[PDV] 전송 완료 | svc:', report.svc,
+                   '| reporter_svc:', report.reporter_svc || '-',
+                   '| session_id:',   report.session_id   || '-');
+    }
+  } catch(e) { console.warn('[PDV] 네트워크 오류:', e.message); }
 }
 async function saveSessionOnce(msgs) { /* 시장 앱은 세션 저장 생략 */ }
 
@@ -1359,11 +1370,10 @@ async function callAI(userText, imageFile) {
 // ── fs_ledger INSERT — market 거래 원장 기록 ─────────────────
 // 설계 원칙: market은 fs_ledger에만 씁니다.
 //            gdc가 fs_ledger를 읽어 재무제표(extra.fs)를 갱신합니다.
-//            시스템 간 직접 호출 없음 — Supabase가 공유 버스.
-async function _recordLedger({ direction, amount, itemName, fsAccount }) {
-  const guid = _user?.guid || _user?.ipv6;
+// v2.0: block_hash, source, 표준 fs_account 포함
+async function _recordLedger({ direction, amount, itemName, fsAccount, sellerGuid, buyerGuid, txId, prevSettleHash, blockHash, blockId }) {
+  const guid = _user?.primary_guid || _user?.guid || _user?.ipv6;
   if (!guid || !amount || amount <= 0) return null;
-
   const SBKEY = SUPABASE_KEY;
   const SBH   = {
     'apikey':        SBKEY,
@@ -1371,30 +1381,33 @@ async function _recordLedger({ direction, amount, itemName, fsAccount }) {
     'Content-Type':  'application/json',
     'Prefer':        'return=minimal',
   };
-
-  const txId = crypto.randomUUID();
-  const now  = new Date().toISOString();
-
+  const _txId = txId || crypto.randomUUID();
+  const now   = new Date().toISOString();
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/fs_ledger`, {
       method: 'POST',
       headers: SBH,
       body: JSON.stringify({
-        tx_id:      txId,
-        guid:       guid,
-        counterpart:'market.gopang.net',
-        direction:  direction,
-        amount:     amount,
-        item_name:  itemName,
-        fs_account: fsAccount,
-        memo:       'K-Market AI 거래 자동 기록',
-        tx_at:      now,
+        tx_id:            _txId,
+        guid:             guid,
+        counterpart:      direction === 'debit' ? (sellerGuid || 'market.gopang.net') : (buyerGuid || 'market.gopang.net'),
+        seller_guid:      sellerGuid  || null,
+        buyer_guid:       buyerGuid   || null,
+        direction:        direction,
+        amount:           amount,
+        item_name:        itemName,
+        fs_account:       fsAccount,
+        source:           'market',
+        memo:             'K-Market AI 거래 자동 기록',
+        prev_settle_hash: prevSettleHash || null,
+        block_hash:       blockHash      || null,
+        block_id:         blockId        || null,
+        tx_at:            now,
       }),
     });
-
     if (res.ok) {
       console.log('[Market Ledger] ✅', direction, '₮'+amount.toLocaleString(), itemName);
-      return txId;
+      return _txId;
     } else {
       const err = await res.text();
       console.warn('[Market Ledger] ❌', res.status, err);
@@ -1405,55 +1418,119 @@ async function _recordLedger({ direction, amount, itemName, fsAccount }) {
     return null;
   }
 }
-
 // ── AI 응답에서 [TRADE] 블록 파싱 → fs_ledger 기록 ──────────
+// v2.2: fs_account 표준 코드, seller_guid 필수 확인, session_id 포함
+// prevSettleHash / blockHash / blockId 는 gopang-wallet.js(GWP_SIGN_REQUEST)가
+// 자동 주입하는 값이므로 이 단계에서는 null — Worker/L1 완료 후 채워짐
 async function _parseTrade(aiText, userText) {
-  const match = aiText.match(/\[TRADE\](.+?)\[\/TRADE\]/s);
+  const match = aiText.match(/\[TRADE\]([\s\S]+?)\[\/TRADE\]/);
   if (!match) return;
 
+  // v2.2 다중행 YAML형 파싱 지원
   let trade;
+  const raw = match[1].trim();
   try {
-    trade = JSON.parse(match[1].trim());
-  } catch(e) {
-    console.warn('[Market Ledger] TRADE 파싱 실패:', match[1]);
-    return;
+    trade = JSON.parse(raw);
+  } catch(_) {
+    // YAML형 [TRADE] 블록 파싱 (SP-KMARKET v2.2 다중행 형식)
+    trade = {};
+    for (const line of raw.split('\n')) {
+      const m = line.match(/^\s*([\w_]+):\s*(.+)$/);
+      if (m) trade[m[1].trim()] = m[2].trim();
+    }
+    // items 배열: items: 섹션 이후에서만 name: 추출 (seller_name 오매칭 방지)
+    if (!trade.item_name) {
+      const itemsSection = raw.includes('items:') ? raw.split('items:').slice(1).join('items:') : raw;
+      const nameM  = itemsSection.match(/name:\s*(.+)/);
+      const priceM = itemsSection.match(/price:\s*(\d+)/);
+      const qtyM   = itemsSection.match(/quantity:\s*(\d+)/);
+      if (nameM) trade.item_name = nameM[1].trim();
+      if (priceM && qtyM) trade.amount = parseInt(priceM[1]) * parseInt(qtyM[1]);
+    }
+    // total 우선 사용 (합계)
+    if (trade.total) trade.amount = parseInt(trade.total);
+    // fs_account_buyer → fs_account
+    if (trade.fs_account_buyer) trade.fs_account = trade.fs_account_buyer;
   }
 
-  const { direction, amount, item_name, fs_account } = trade;
-  if (!direction || !amount || !item_name) return;
+  const {
+    direction, amount, item_name,
+    fs_account, fs_account_buyer,
+    seller_guid, buyer_guid,
+    total,
+  } = trade;
 
+  const resolvedAmount = parseInt(total || amount);
+  if (!resolvedAmount || resolvedAmount <= 0) return;
+  if (!item_name) { console.warn('[Market] TRADE item_name 없음'); return; }
+
+  // seller_guid 없으면 경고 후 진행 (시나리오 F: 사업 경비 등 예외)
+  if (!seller_guid || seller_guid === 'none') {
+    console.warn('[Market] seller_guid 없음 — 경비/수동 거래로 처리');
+  }
+
+  // fs_account 표준 코드 매핑 (구버전 코드 → 표준 코드 변환 보호)
+  const fsAccountMap = {
+    'purchase':    'pl-purchase',
+    'revenue':     'pl-revenue',
+    'opex':        'pl-opex',
+    'pl-purchase': 'pl-purchase',
+    'pl-revenue':  'pl-revenue',
+    'pl-opex':     'pl-opex',
+    'pl-platform_fee': 'pl-platform_fee',
+  };
+  const resolvedFsAccount = fsAccountMap[fs_account || fs_account_buyer]
+    || (direction === 'credit' ? 'pl-revenue' : 'pl-purchase');
+
+  const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
+  const resolvedDirection = direction || 'debit';
+
+  // prevSettleHash / blockHash / blockId:
+  //   gopang-wallet.js가 GWP_SIGN_REQUEST 처리 시 자동 주입.
+  //   이 시점(_parseTrade)에서는 null — L1 검증 완료 후 GWP_DONE으로 수신됨.
   const txId = await _recordLedger({
-    direction,
-    amount:    parseInt(amount),
-    itemName:  item_name,
-    fsAccount: fs_account || (direction === 'credit' ? 'revenue' : 'purchase'),
+    direction:      resolvedDirection,
+    amount:         resolvedAmount,
+    itemName:       item_name,
+    fsAccount:      resolvedFsAccount,
+    sellerGuid:     (seller_guid && seller_guid !== 'none') ? seller_guid : null,
+    buyerGuid:      resolvedDirection === 'debit' ? buyerGuid : (buyer_guid || null),
+    txId:           null,
+    prevSettleHash: null,   // gopang-wallet.js 자동 주입 (GWP_SIGN_REQUEST)
+    blockHash:      null,   // L1 동기 앵커링 완료 후 GWP_DONE으로 수신
+    blockId:        null,   // 동상
   });
 
   if (txId) {
-    // PDV에도 거래 기록
+    const now = new Date().toISOString();
     await recordPDV({
       report: {
-        svc:  'kcommerce',
-        type: 'transaction',
-        who:  {
-          ipv6:       _user?.guid || _user?.ipv6,
+        svc:          'kcommerce',
+        session_id:   txId,           // STEP 11: session_id로 중복 방지
+        reporter_svc: 'kmarket',      // STEP 11: 최하위 이행 시스템 보고
+        type:         'transaction',
+        who: {
+          ipv6:       buyerGuid,
           role:       'user',
           level:      'L0',
           recipients: ['gopang-pdv'],
         },
-        when:  { period_start: new Date().toISOString(), period_end: new Date().toISOString() },
+        when:  { period_start: now, period_end: now },
         where: { svc_url: 'https://market.gopang.net/webapp.html' },
-        what:  { summary: 'K-Market 거래 — ' + item_name + ' ₮' + parseInt(amount).toLocaleString() + ' (' + (direction === 'credit' ? '판매' : '구매') + ')' },
+        what:  {
+          summary: 'K-Market 거래 — ' + item_name
+                   + ' ₮' + resolvedAmount.toLocaleString()
+                   + ' (' + (resolvedDirection === 'credit' ? '판매' : '구매') + ')',
+          seller_guid: seller_guid || null,
+          tx_id:       txId,
+        },
         how:   { method: 'K-Market AI 자동 거래 감지 → fs_ledger 기록', tx_id: txId },
         why:   { goal: '거래 재무제표 반영' },
       }
     });
-    console.log('[Market] 거래 PDV 기록 완료:', txId);
+    console.log('[Market] 거래 PDV 기록 완료:', txId, '| seller:', seller_guid || '없음');
   }
 }
-
-// ── Storage (구 js/services/storage.js) ──────────────────────────
-async function uploadPhoto(file) {
   // market webapp은 사진 업로드 미지원 (필요시 Supabase Storage 연동)
   return null;
 }
@@ -1605,12 +1682,26 @@ async function clearSWCache() {
 function openSearch()  { document.getElementById('search-panel')?.classList.add('open'); }
 function closeSearch() { document.getElementById('search-panel')?.classList.remove('open'); }
 function handleSearchOverlayClick(e) { if(e.target===e.currentTarget) closeSearch(); }
+// v2.0: primary_guid 포함 검색 결과
 function runSearch() {
   const q=document.getElementById('search-input')?.value.trim(); if(!q) return;
   const log=JSON.parse(localStorage.getItem('gopang_pdv_log')||'[]');
-  const results=log.filter(r=>JSON.stringify(r).includes(q)).slice(-10).map((r,i)=>({id:'pdv-'+i,title:r.summary||'PDV'}));
+  const results=log.filter(r=>JSON.stringify(r).includes(q)).slice(-10).map((r,i)=>({
+    id:           'pdv-'+i,
+    title:        r.summary||'PDV',
+    primary_guid: r.primary_guid || r.guid || null,
+    seller_guid:  r.seller_guid  || null,
+    item_name:    r.item_name    || null,
+    amount:       r.amount       || null,
+  }));
   const c=document.getElementById('search-results'); if(!c) return;
-  c.innerHTML=results.length?results.map(r=>`<div class="search-result-item">${r.title}</div>`).join(''):'<div class="search-empty">결과 없음</div>';
+  c.innerHTML=results.length
+    ? results.map(r=>`<div class="search-result-item" data-guid="${r.primary_guid||''}" data-seller="${r.seller_guid||''}" onclick="selectContact('${r.primary_guid||r.id}')">`
+        +`<span class="search-result-title">${r.title}</span>`
+        +(r.amount?`<span class="search-result-amount">₮${Number(r.amount).toLocaleString()}</span>`:'')
+        +(r.primary_guid?`<span class="search-result-guid">${r.primary_guid.slice(0,16)}…</span>`:'')
+        +`</div>`).join('')
+    :'<div class="search-empty">결과 없음</div>';
 }
 function selectContact(id) { closeSearch(); }
 function showGUID()        { alert('내 GUID: '+(_user?.guid||'초기화 중…')); }
@@ -2323,6 +2414,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (loadingEl) loadingEl.style.display = 'flex';
 });
 </script>
+<script src="https://gopang.net/gopang-wallet.js"></script>
 <script type="module" src="https://gopang.net/auth/subsystem-auth.js"></script>
 </body>
 </html>
