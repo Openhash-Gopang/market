@@ -1177,7 +1177,7 @@ const PROXY_BASE    = 'https://gopang-proxy.tensor-city.workers.dev';
 const KLAW_COOLDOWN_MS = 3000;
 
 const CFG = {
-  model:   'deepseek-chat',
+  model:   'deepseek-v4-flash',
   apiKey:  '',
   proxyURL: PROXY_BASE + '/deepseek',
   // ★ SP는 GitHub raw URL 동적 로드 — webapp 수정 없이 갱신 가능
@@ -1528,6 +1528,9 @@ async function callAI(userText, imageFile) {
   // ── profile.html → market → gopang 서명 포워딩 ──────────
 // profile.html은 market을 opener로 열었으므로
 // GWP_SIGN_REQUEST를 market이 수신 → gopang 탭으로 포워딩
+// 핸들러 중복 등록 방지
+let _gwpSignResponseHandler = null;
+
 window.addEventListener('message', (e) => {
   const allowed = ['https://users.gopang.net'];
   if (!allowed.includes(e.origin)) return;
@@ -1540,18 +1543,28 @@ window.addEventListener('message', (e) => {
     window.opener.postMessage(e.data, 'https://gopang.net');
   } else {
     console.warn('[Market] gopang opener 없음 — 포워딩 실패');
+    return;
+  }
+
+  // 이전 핸들러 제거 (중복 방지)
+  if (_gwpSignResponseHandler) {
+    window.removeEventListener('message', _gwpSignResponseHandler);
   }
 
   // GWP_SIGN_RESPONSE를 gopang → market → profile 역방향 포워딩
-  const signResponseHandler = (ev) => {
+  const profileSource  = e.source;   // profile 탭 참조 저장
+  const profileOrigin  = e.origin;   // 'https://users.gopang.net'
+
+  _gwpSignResponseHandler = (ev) => {
     if (ev.origin !== 'https://gopang.net') return;
     if (ev.data?.type !== 'GWP_SIGN_RESPONSE' &&
         ev.data?.type !== 'GWP_SIGN_CANCELLED') return;
-    window.removeEventListener('message', signResponseHandler);
+    window.removeEventListener('message', _gwpSignResponseHandler);
+    _gwpSignResponseHandler = null;
     console.log('[Market] GWP_SIGN_RESPONSE 수신 → profile 포워딩');
-    e.source?.postMessage(ev.data, e.origin);
+    profileSource?.postMessage(ev.data, profileOrigin);
   };
-  window.addEventListener('message', signResponseHandler);
+  window.addEventListener('message', _gwpSignResponseHandler);
 });
   // v2.4: [TRADE] 블록 대체. 판매자 선택 즉시 업체 페이지 연결.
   const profileTagMatch = fullText.match(/\[OPEN_PROFILE:(\{[^}]+\})\]/);
@@ -1563,7 +1576,8 @@ window.addEventListener('message', (e) => {
       const profileParam = handle
         ? 'handle=' + encodeURIComponent(handle)
         : 'guid='   + encodeURIComponent(guid || '');
-      const profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam;
+      const profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam
+        + '&opener_origin=' + encodeURIComponent('https://market.gopang.net');
 
       console.log('[Market] OPEN_PROFILE → 팝업 오픈:', profileURL);
 
@@ -1733,7 +1747,8 @@ async function _parseTrade(aiText, userText) {
   const profileParam = handle
     ? 'handle=' + encodeURIComponent(handle)
     : 'guid='   + encodeURIComponent(seller_guid);
-  const profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam;
+  const profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam
+    + '&opener_origin=' + encodeURIComponent('https://market.gopang.net');
 
   const popup = window.open(profileURL, 'gopang-profile', 'width=480,height=780,scrollbars=yes,resizable=no');
 
