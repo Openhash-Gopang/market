@@ -1534,42 +1534,47 @@ async function callAI(userText, imageFile) {
 // GWP_SIGN_REQUEST를 market이 수신 → gopang 탭으로 포워딩
 // 핸들러 중복 등록 방지
 let _gwpSignResponseHandler = null;
+let _gwpSignRequestHandler = null;
 
-window.addEventListener('message', (e) => {
-  const allowed = ['https://users.gopang.net'];
-  if (!allowed.includes(e.origin)) return;
-  if (e.data?.type !== 'GWP_SIGN_REQUEST') return;
-
-  console.log('[Market] GWP_SIGN_REQUEST 수신 → gopang 탭 포워딩');
-
-  // gopang 탭(자신의 opener)으로 포워딩
-  if (window.opener && !window.opener.closed) {
-    window.opener.postMessage(e.data, 'https://gopang.net');
-  } else {
-    console.warn('[Market] gopang opener 없음 — 포워딩 실패');
-    return;
+function _setupGwpSignRequest() {
+  if (_gwpSignRequestHandler) {
+    window.removeEventListener('message', _gwpSignRequestHandler);
   }
+  _gwpSignRequestHandler = (e) => {
+    const allowed = ['https://users.gopang.net'];
+    if (!allowed.includes(e.origin)) return;
+    if (e.data?.type !== 'GWP_SIGN_REQUEST') return;
 
-  // 이전 핸들러 제거 (중복 방지)
-  if (_gwpSignResponseHandler) {
-    window.removeEventListener('message', _gwpSignResponseHandler);
-  }
+    console.log('[Market] GWP_SIGN_REQUEST 수신 → gopang 탭 포워딩');
 
-  // GWP_SIGN_RESPONSE를 gopang → market → profile 역방향 포워딩
-  const profileSource  = e.source;   // profile 탭 참조 저장
-  const profileOrigin  = e.origin;   // 'https://users.gopang.net'
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(e.data, 'https://gopang.net');
+    } else {
+      console.warn('[Market] gopang opener 없음 — 포워딩 실패');
+      return;
+    }
 
-  _gwpSignResponseHandler = (ev) => {
-    if (ev.origin !== 'https://gopang.net') return;
-    if (ev.data?.type !== 'GWP_SIGN_RESPONSE' &&
-        ev.data?.type !== 'GWP_SIGN_CANCELLED') return;
-    window.removeEventListener('message', _gwpSignResponseHandler);
-    _gwpSignResponseHandler = null;
-    console.log('[Market] GWP_SIGN_RESPONSE 수신 → profile 포워딩');
-    profileSource?.postMessage(ev.data, profileOrigin);
+    if (_gwpSignResponseHandler) {
+      window.removeEventListener('message', _gwpSignResponseHandler);
+    }
+
+    const profileSource = e.source;
+    const profileOrigin = e.origin;
+
+    _gwpSignResponseHandler = (ev) => {
+      if (ev.origin !== 'https://gopang.net') return;
+      if (ev.data?.type !== 'GWP_SIGN_RESPONSE' &&
+          ev.data?.type !== 'GWP_SIGN_CANCELLED') return;
+      window.removeEventListener('message', _gwpSignResponseHandler);
+      _gwpSignResponseHandler = null;
+      console.log('[Market] GWP_SIGN_RESPONSE 수신 → profile 포워딩');
+      profileSource?.postMessage(ev.data, profileOrigin);
+    };
+    window.addEventListener('message', _gwpSignResponseHandler);
   };
-  window.addEventListener('message', _gwpSignResponseHandler);
-});
+  window.addEventListener('message', _gwpSignRequestHandler);
+}
+_setupGwpSignRequest();
   // v2.4: [TRADE] 블록 대체. 판매자 선택 즉시 업체 페이지 연결.
   const profileTagMatch = fullText.match(/\[OPEN_PROFILE:(\{[^}]+\})\]/);
   if (profileTagMatch) {
