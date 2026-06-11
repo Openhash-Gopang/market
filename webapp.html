@@ -1355,6 +1355,7 @@ async function callAI(userText, imageFile) {
         messages,
         stream: true,
         max_tokens: 800,
+        thinking_mode: false,
       })
     });
 
@@ -1482,7 +1483,7 @@ async function callAI(userText, imageFile) {
       const res2 = await fetch(PROXY_BASE + '/deepseek', {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ model: CFG.model, messages: messages2, stream: true, max_tokens: 800 }),
+        body: JSON.stringify({ model: CFG.model, messages: messages2, stream: true, max_tokens: 800, thinking_mode: false }),
       });
       if (res2.ok) {
         const reader2 = res2.body.getReader();
@@ -2227,6 +2228,9 @@ async function init(user) {
   updateSendBtn();
   console.info('[고팡] v4.0 초기화 완료 — GUID:', USER_GUID.slice(0,8)+'…');
 
+  // SP 사전 로드 — DeepSeek KV Cache 강제 적중 (첫 callAI 시 fetch 없이 즉시 사용)
+  loadSystemPrompt().catch(() => {});
+
   // ── GWP ctx 수신 → 사용자 지시 자동 전송 ──────────────────
   // gopang webapp이 [GWP:kcommerce] 태그로 새 탭을 열 때 ctx 파라미터로 원본 지시를 전달함
   const _gwpParams  = new URLSearchParams(location.search);
@@ -2248,8 +2252,8 @@ async function init(user) {
       if (_msgInput && _gwpCtx) {
         _msgInput.value = _gwpCtx;
         updateSendBtn();
-        // UI 렌더링 후 전송 (100ms 딜레이)
-        setTimeout(() => sendMessage(), 100);
+        // SP 로드 완료 후 전송 (fetch 경쟁 방지)
+        loadSystemPrompt().then(() => setTimeout(() => sendMessage(), 100));
       }
     } catch(e) {
       console.warn('[GWP] ctx 복원 실패:', e.message);
