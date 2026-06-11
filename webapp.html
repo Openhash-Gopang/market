@@ -1355,7 +1355,7 @@ async function callAI(userText, imageFile) {
         messages,
         stream: true,
         max_tokens: 800,
-        thinking_mode: false,
+        thinking: { type: "disabled" },
       })
     });
 
@@ -1483,7 +1483,7 @@ async function callAI(userText, imageFile) {
       const res2 = await fetch(PROXY_BASE + '/deepseek', {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ model: CFG.model, messages: messages2, stream: true, max_tokens: 800, thinking_mode: false }),
+        body: JSON.stringify({ model: CFG.model, messages: messages2, stream: true, max_tokens: 800, thinking: { type: "disabled" } }),
       });
       if (res2.ok) {
         const reader2 = res2.body.getReader();
