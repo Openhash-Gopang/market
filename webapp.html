@@ -1609,11 +1609,6 @@ window.addEventListener('message', (e) => {
           const summary = e.data.summary || '주문 완료';
           appendMsg('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
 
-          // gopang 탭으로 GWP_DONE 포워딩 (block_hash, buyer_claim 보존)
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage(e.data, 'https://gopang.net');
-          }
-
           // PDV 보고
           const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
           recordPDV({
@@ -1778,11 +1773,6 @@ async function _parseTrade(aiText, userText) {
 
     const summary = e.data.summary || '주문 완료';
     appendMsg('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
-
-    // gopang 탭으로 GWP_DONE 포워딩 (block_hash, buyer_claim 보존)
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage(e.data, 'https://gopang.net');
-    }
 
     // PDV 보고 (GWP_DONE 수신 후 — reporter_svc: kmarket)
     const pdv = e.data.pdvData || {};
@@ -2258,8 +2248,18 @@ async function init(user) {
       if (_msgInput && _gwpCtx) {
         _msgInput.value = _gwpCtx;
         updateSendBtn();
-        // UI 렌더링 후 전송 (100ms 딜레이)
-        setTimeout(() => sendMessage(), 100);
+        // _user 초기화 완료 후 전송 (최대 5초 대기)
+        (async () => {
+          const _t0 = Date.now();
+          while (!_user && Date.now() - _t0 < 5000) {
+            await new Promise(r => setTimeout(r, 100));
+          }
+          if (!_user) {
+            console.warn('[GWP] ctx 자동 전송 실패 — _user 초기화 타임아웃');
+            return;
+          }
+          sendMessage();
+        })();
       }
     } catch(e) {
       console.warn('[GWP] ctx 복원 실패:', e.message);
