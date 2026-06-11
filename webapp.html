@@ -1610,6 +1610,12 @@ window.addEventListener('message', (e) => {
           const summary = e.data.summary || '주문 완료';
           appendBubble('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
 
+          // GWP_DONE → gopang 탭 포워딩 (redeemClaim 트리거)
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(e.data, 'https://gopang.net');
+            console.log('[Market] GWP_DONE → gopang 포워딩 완료 (OPEN_PROFILE 경로)');
+          }
+
           // PDV 보고
           const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
           recordPDV({
