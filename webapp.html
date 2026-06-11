@@ -1793,6 +1793,12 @@ async function _parseTrade(aiText, userText) {
     }).catch(err => console.warn('[PDV]', err));
 
     console.log('[Market] GWP_DONE 수신:', summary);
+
+    // GWP_DONE → gopang 탭 포워딩 (redeemClaim 트리거)
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(e.data, 'https://gopang.net');
+      console.log('[Market] GWP_DONE → gopang 포워딩 완료');
+    }
   };
   window.addEventListener('message', gwpHandler);
 }
