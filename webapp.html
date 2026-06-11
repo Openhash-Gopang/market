@@ -1621,15 +1621,7 @@ _setupGwpSignRequest();
             console.log('[Market] GWP_DONE → gopang 포워딩 완료 (OPEN_PROFILE 경로)');
           }
 
-          // profile이 확인 버튼 클릭 시 market도 닫힘
-          const _profileAckHandler = (ev) => {
-            if (ev.origin !== 'https://users.gopang.net') return;
-            if (ev.data?.type !== 'PROFILE_DONE_ACK') return;
-            window.removeEventListener('message', _profileAckHandler);
-            console.log('[Market] PROFILE_DONE_ACK 수신 → market 탭 닫힘');
-            setTimeout(() => window.close(), 100);
-          };
-          window.addEventListener('message', _profileAckHandler);
+
 
           // PDV 보고
           const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
@@ -1647,6 +1639,8 @@ _setupGwpSignRequest();
               why:  { goal: '거래 재무제표 반영' },
             }
           }).catch(err => console.warn('[PDV]', err));
+          console.log('[Market] PDV 보고 완료 → market 탭 닫힘');
+          setTimeout(() => window.close(), 500);
         };
         window.addEventListener('message', gwpDoneHandler);
       }
@@ -2711,5 +2705,6 @@ document.addEventListener('DOMContentLoaded', () => {
 <script type="module" src="https://gopang.net/auth/subsystem-auth.js"></script>
 </body>
 </html>
+
 
 
