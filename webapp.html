@@ -991,7 +991,7 @@
 <div class="ai-overlay" id="ai-overlay">
   <div class="ai-backdrop" onclick="closeAI()"></div>
   <div class="ai-card">
-    <div class="ai-card-icon">🤖</div>
+    <div class="ai-card-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="5" r="1"/><line x1="8" y1="15" x2="8" y2="15"/><line x1="12" y1="15" x2="12" y2="15"/><line x1="16" y1="15" x2="16" y2="15"/></svg></div>
     <div class="ai-card-title">AI 비서</div>
     <div class="ai-card-sub" id="ai-card-sub">
       DeepSeek v3을 AI 대화 상대로 연결합니다.<br>
@@ -1127,7 +1127,7 @@
     <!-- ── PDV 내 기록 ─────────────────────────────────────── -->
     <div class="setting-group" id="pdv-section">
       <div class="setting-label" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>🔐 내 PDV (개인 데이터 금고)</span>
+        <span>내 PDV (개인 데이터 금고)</span>
         <button onclick="loadPDV()" style="
           background:var(--tint,#3ECF8E);color:#000;border:none;
           border-radius:8px;padding:4px 12px;font-size:12px;
@@ -1279,7 +1279,7 @@ async function initKlaw(user) {}
 async function klawReview(text) {
   // K-Law 간단 키워드 체크
   const flags = [];
-  if (/사기|허위|위조/i.test(text)) flags.push('⚠️ 사기 의심');
+  if (/사기|허위|위조/i.test(text)) flags.push('사기 의심');
   if (/환불|반품/i.test(text))      flags.push('📋 소비자보호법');
   return { flags, level: flags.length > 0 ? 'S1' : 'S0' };
 }
@@ -1399,7 +1399,7 @@ async function callAI(userText, imageFile) {
       console.log('[Market Search] RPC 호출:', searchParams);
 
       // 버블에 검색 중 표시
-      _updateStreamBubble(bubble, fullText.replace(/\[SEARCH\][\s\S]*?\[\/SEARCH\]/, '\n🔍 판매자 검색 중…'));
+      _updateStreamBubble(bubble, fullText.replace(/\[SEARCH\][\s\S]*?\[\/SEARCH\]/, '\n판매자 검색 중…'));
 
       // address 오버라이드: GPS 좌표가 있으면 p_address=null, p_lat/p_lng으로 검색
       // 주소 문자열 매칭은 Kakao region depth 불일치로 신뢰 불가
@@ -1450,7 +1450,7 @@ async function callAI(userText, imageFile) {
             // RPC 반환 컬럼: name, rating_avg, gdc_accepted, trust_level, address, services, extra
             const svc    = r.services?.[0] || '';
             const price  = svc ? ` | ${svc}` : '';
-            const gdc    = r.gdc_accepted ? ' | GDC ✅' : ' | GDC ❌';
+            const gdc    = r.gdc_accepted ? ' | GDC' : ' | GDC 미지원';
             const trust  = r.trust_level  ? ` | ${r.trust_level}` : '';
             const rating = r.rating_avg   ? ` | ★${r.rating_avg}` : '';
             const addrShort = (r.address || '').replace('제주특별자치도 ', '').replace('제주시 ', '');
@@ -1602,7 +1602,7 @@ _setupGwpSignRequest();
       if (!popup) {
         // 팝업 차단 시 링크 표시
         appendBubble('ai',
-          '📱 업체 페이지를 직접 열어 주세요:\n' + profileURL
+          '업체 페이지를 직접 열어 주세요:\n' + profileURL
         );
       } else {
         // GWP_DONE 수신 대기
@@ -1613,13 +1613,23 @@ _setupGwpSignRequest();
           window.removeEventListener('message', gwpDoneHandler);
 
           const summary = e.data.summary || '주문 완료';
-          appendBubble('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
+          appendBubble('ai', summary + '\n\n재무제표가 갱신되었습니다.');
 
           // GWP_DONE → gopang 탭 포워딩 (redeemClaim 트리거)
           if (window.opener && !window.opener.closed) {
             window.opener.postMessage(e.data, 'https://gopang.net');
             console.log('[Market] GWP_DONE → gopang 포워딩 완료 (OPEN_PROFILE 경로)');
           }
+
+          // profile이 확인 버튼 클릭 시 market도 닫힘
+          const _profileAckHandler = (ev) => {
+            if (ev.origin !== 'https://users.gopang.net') return;
+            if (ev.data?.type !== 'PROFILE_DONE_ACK') return;
+            window.removeEventListener('message', _profileAckHandler);
+            console.log('[Market] PROFILE_DONE_ACK 수신 → market 탭 닫힘');
+            setTimeout(() => window.close(), 100);
+          };
+          window.addEventListener('message', _profileAckHandler);
 
           // PDV 보고
           const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
@@ -1770,7 +1780,7 @@ async function _parseTrade(aiText, userText) {
   if (!popup) {
     // 팝업 차단 시 → 채팅에 링크 표시
     appendBubble('ai',
-      '📱 **' + (seller_name || '업체') + '** 페이지를 열어 메뉴를 선택하고 주문해 주세요:\n' +
+      '**' + (seller_name || '업체') + '** 페이지를 열어 메뉴를 선택하고 주문해 주세요:\n' +
       profileURL
     );
     console.warn('[Market] 팝업 차단됨 — 링크 표시');
@@ -1784,7 +1794,7 @@ async function _parseTrade(aiText, userText) {
     window.removeEventListener('message', gwpHandler);
 
     const summary = e.data.summary || '주문 완료';
-    appendBubble('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
+    appendBubble('ai', summary + '\n\n재무제표가 갱신되었습니다.');
 
     // PDV 보고 (GWP_DONE 수신 후 — reporter_svc: kmarket)
     const pdv = e.data.pdvData || {};
@@ -1902,7 +1912,7 @@ function showTyping() {
 }
 function hideTyping() { typingEl?.remove(); typingEl=null; }
 function riskChip(level, flags) {
-  const map={S0:'✅ 안전',S1:'⚠️ 주의',S2:'🚨 경고',S3:'🛑 차단'};
+  const map={S0:'안전',S1:'주의',S2:'경고',S3:'차단'};
   return `<span class="risk-chip ${level.toLowerCase()}">${map[level]||'—'}${flags?.length?' · '+flags.slice(0,3).join(' '):''}</span>`;
 }
 
@@ -1923,7 +1933,7 @@ function _renderProgress() {
   const c=document.getElementById('progress-steps'); if(!c) return;
   c.innerHTML=_progressSteps.map((s,i)=>{
     const done=i<_progressIdx,cur=i===_progressIdx;
-    return `<div class="progress-step ${done?'done':''} ${cur?'current':''}"><span class="step-icon">${done?'✅':cur?'⏳':'⬜'}</span><span class="step-label">${s.label}</span><span class="step-detail">${s.detail}</span></div>`;
+    return `<div class="progress-step ${done?'done':''} ${cur?'current':''}"><span class="step-icon">${done?'완료':cur?'진행중':''}</span><span class="step-label">${s.label}</span><span class="step-detail">${s.detail}</span></div>`;
   }).join('');
 }
 function _topLogoSetProgress(active) {
@@ -2002,7 +2012,7 @@ function toggleAI()  { aiActive?closeAI():activateAI(); }
 function closeAI()   { aiActive=false; document.getElementById('ai-btn')?.classList.remove('active'); }
 function activateAI(silent=false) {
   aiActive=true; document.getElementById('ai-btn')?.classList.add('active');
-  if(!silent) appendBubble('ai','🤖 AI 비서 활성화. 무엇을 도와드릴까요?');
+  if(!silent) appendBubble('ai','AI 비서 활성화. 무엇을 도와드릴까요?');
 }
 
 // 마이크
@@ -2334,7 +2344,7 @@ function _pdvCard(r) {
         <span style="font-size:11px;color:var(--label-2);">${date}</span>
       </div>
       <div style="font-size:12px;color:var(--label-2);line-height:1.6;">
-        ${r.location ? `📍 ${r.location}<br>` : ''}
+        ${r.location ? `${r.location}<br>` : ''}
         ${r.how     ? `🔧 ${r.how}<br>` : ''}
         ${r.why     ? `💡 ${r.why}` : ''}
       </div>
@@ -2349,10 +2359,10 @@ async function _handlePDVCommand(text) {
 
   const user = _user;
   if (!user?.guid) {
-    appendBubble('ai', '🔐 PDV 조회는 로그인 후 이용 가능합니다.');
+    appendBubble('ai', 'PDV 조회는 로그인 후 이용 가능합니다.');
     return true;
   }
-  appendBubble('ai', '🔐 PDV 기록을 불러오는 중…', true);
+  appendBubble('ai', 'PDV 기록을 불러오는 중…', true);
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/pdv_log?user_guid=eq.${user.guid}&order=created_at.desc&limit=10`,
@@ -2360,7 +2370,7 @@ async function _handlePDVCommand(text) {
     );
     const rows = await res.json();
     if (!rows.length) {
-      appendBubble('ai', '🔐 아직 PDV 기록이 없습니다.', true);
+      appendBubble('ai', '아직 PDV 기록이 없습니다.', true);
       return true;
     }
     const html = rows.map(r => {
@@ -2378,7 +2388,7 @@ async function _handlePDVCommand(text) {
                           border-radius:8px;font-size:13px;line-height:1.6;">
         <b>${icon} ${r.summary || r.record_type}</b>
         <span style="float:right;color:var(--label-2);font-size:11px;">${date}${link}</span>
-        ${r.location ? `<br>📍 ${r.location}` : ''}
+        ${r.location ? `<br>${r.location}` : ''}
       </div>`;
     }).join('');
     appendBubble('ai',
@@ -2439,7 +2449,7 @@ function _initPCDashboard() {
   pdvCol.innerHTML = `
     <div style="padding:20px 24px;border-bottom:1px solid var(--sep,#3A3A3C);
                 display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-size:18px;font-weight:700;color:var(--label);">🔐 PDV 데이터 금고</div>
+      <div style="font-size:18px;font-weight:700;color:var(--label);">PDV 데이터 금고</div>
       <button onclick="loadPDVPanel()" style="
         background:var(--tint,#3ECF8E);color:#000;border:none;
         border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;">
@@ -2701,3 +2711,4 @@ document.addEventListener('DOMContentLoaded', () => {
 <script type="module" src="https://gopang.net/auth/subsystem-auth.js"></script>
 </body>
 </html>
+
