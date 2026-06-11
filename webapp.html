@@ -1609,6 +1609,11 @@ window.addEventListener('message', (e) => {
           const summary = e.data.summary || '주문 완료';
           appendMsg('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
 
+          // gopang 탭으로 GWP_DONE 포워딩 (block_hash, buyer_claim 보존)
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(e.data, 'https://gopang.net');
+          }
+
           // PDV 보고
           const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
           recordPDV({
@@ -1773,6 +1778,11 @@ async function _parseTrade(aiText, userText) {
 
     const summary = e.data.summary || '주문 완료';
     appendMsg('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
+
+    // gopang 탭으로 GWP_DONE 포워딩 (block_hash, buyer_claim 보존)
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(e.data, 'https://gopang.net');
+    }
 
     // PDV 보고 (GWP_DONE 수신 후 — reporter_svc: kmarket)
     const pdv = e.data.pdvData || {};
