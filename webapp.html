@@ -1595,7 +1595,7 @@ window.addEventListener('message', (e) => {
 
       if (!popup) {
         // 팝업 차단 시 링크 표시
-        appendMsg('ai',
+        appendBubble('ai',
           '📱 업체 페이지를 직접 열어 주세요:\n' + profileURL
         );
       } else {
@@ -1607,7 +1607,7 @@ window.addEventListener('message', (e) => {
           window.removeEventListener('message', gwpDoneHandler);
 
           const summary = e.data.summary || '주문 완료';
-          appendMsg('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
+          appendBubble('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
 
           // PDV 보고
           const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
@@ -1757,7 +1757,7 @@ async function _parseTrade(aiText, userText) {
 
   if (!popup) {
     // 팝업 차단 시 → 채팅에 링크 표시
-    appendMsg('ai',
+    appendBubble('ai',
       '📱 **' + (seller_name || '업체') + '** 페이지를 열어 메뉴를 선택하고 주문해 주세요:\n' +
       profileURL
     );
@@ -1772,7 +1772,7 @@ async function _parseTrade(aiText, userText) {
     window.removeEventListener('message', gwpHandler);
 
     const summary = e.data.summary || '주문 완료';
-    appendMsg('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
+    appendBubble('ai', '✅ ' + summary + '\n\n재무제표가 갱신되었습니다.');
 
     // PDV 보고 (GWP_DONE 수신 후 — reporter_svc: kmarket)
     const pdv = e.data.pdvData || {};
@@ -2248,18 +2248,8 @@ async function init(user) {
       if (_msgInput && _gwpCtx) {
         _msgInput.value = _gwpCtx;
         updateSendBtn();
-        // _user 초기화 완료 후 전송 (최대 5초 대기)
-        (async () => {
-          const _t0 = Date.now();
-          while (!_user && Date.now() - _t0 < 5000) {
-            await new Promise(r => setTimeout(r, 100));
-          }
-          if (!_user) {
-            console.warn('[GWP] ctx 자동 전송 실패 — _user 초기화 타임아웃');
-            return;
-          }
-          sendMessage();
-        })();
+        // UI 렌더링 후 전송 (100ms 딜레이)
+        setTimeout(() => sendMessage(), 100);
       }
     } catch(e) {
       console.warn('[GWP] ctx 복원 실패:', e.message);
