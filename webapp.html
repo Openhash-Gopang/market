@@ -1585,8 +1585,11 @@ _setupGwpSignRequest();
       const profileParam = handle
         ? 'handle=' + encodeURIComponent(handle)
         : 'guid='   + encodeURIComponent(guid || '');
+      // gopang_token: market URL에서 수신한 토큰을 profile에 그대로 전달 (SSO 연속성)
+      const _profileToken = new URLSearchParams(location.search).get('gopang_token') || '';
       const profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam
-        + '&opener_origin=' + encodeURIComponent('https://market.gopang.net');
+        + '&opener_origin=' + encodeURIComponent('https://market.gopang.net')
+        + (_profileToken ? '&gopang_token=' + encodeURIComponent(_profileToken) : '');
 
       console.log('[Market] OPEN_PROFILE → 팝업 오픈:', profileURL);
 
@@ -1766,8 +1769,11 @@ async function _parseTrade(aiText, userText) {
   const profileParam = handle
     ? 'handle=' + encodeURIComponent(handle)
     : 'guid='   + encodeURIComponent(seller_guid);
+  // gopang_token: market URL에서 수신한 토큰을 profile에 그대로 전달 (SSO 연속성)
+  const _profileToken2 = new URLSearchParams(location.search).get('gopang_token') || '';
   const profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam
-    + '&opener_origin=' + encodeURIComponent('https://market.gopang.net');
+    + '&opener_origin=' + encodeURIComponent('https://market.gopang.net')
+    + (_profileToken2 ? '&gopang_token=' + encodeURIComponent(_profileToken2) : '');
 
   const popup = window.open(profileURL, 'gopang-profile', 'width=480,height=780,scrollbars=yes,resizable=no');
 
