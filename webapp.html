@@ -1791,29 +1791,33 @@ async function _parseTrade(aiText, userText) {
     appendBubble('ai', summary + '\n\n재무제표가 갱신되었습니다.');
 
     // PDV 보고 (GWP_DONE 수신 후 — reporter_svc: kmarket)
-    const pdv = e.data.pdvData || {};
+    // session_id: profile/gopang과 공유된 값 → _patchPdvChainHeight JOIN 보장
+    const sessionId = e.data.session_id || (seller_guid + '-' + Date.now());
     recordPDV({
       report: {
         svc:          'kcommerce',
-        session_id:   seller_guid + '-' + Date.now(),
+        session_id:   sessionId,
         reporter_svc: 'kmarket',
         type:         'transaction',
         who:  { ipv6: _user?.primary_guid || _user?.guid, role: 'user', level: 'L0', recipients: ['gopang-pdv'] },
         when: { period_start: new Date().toISOString(), period_end: new Date().toISOString() },
         where:{ svc_url: 'https://market.gopang.net/webapp.html' },
-        what: { summary, seller_guid, tx_id: null },
+        what: { summary, seller_guid, tx_id: e.data.tx_hash || null },
         how:  { method: 'profile.html GWP 결제 완료' },
         why:  { goal: '거래 재무제표 반영' },
       }
     }).catch(err => console.warn('[PDV]', err));
 
-    console.log('[Market] GWP_DONE 수신:', summary);
+    console.log('[Market] GWP_DONE 수신:', summary, '| session_id:', sessionId.slice(0, 8));
 
     // GWP_DONE → gopang 탭 포워딩 (redeemClaim 트리거)
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage(e.data, 'https://gopang.net');
       console.log('[Market] GWP_DONE → gopang 포워딩 완료');
     }
+
+    // PDV 보고 완료 후 market 탭 자동 닫힘
+    setTimeout(() => window.close(), 500);
   };
   window.addEventListener('message', gwpHandler);
 }
