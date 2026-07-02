@@ -1187,9 +1187,9 @@ const CFG = {
 };
 
 const GWP_REGISTRY = {
-  'market': { url: 'https://market.gopang.net/webapp.html', name: 'K-Market' },
-  'school': { url: 'https://school.gopang.net/webapp.html', name: 'K-School' },
-  'klaw':   { url: 'https://klaw.gopang.net/webapp.html',   name: 'K-Law' },
+  'market': { url: 'https://market.hondi.net/webapp.html', name: 'K-Market' },
+  'school': { url: 'https://school.hondi.net/webapp.html', name: 'K-School' },
+  'klaw':   { url: 'https://klaw.hondi.net/webapp.html',   name: 'K-Law' },
 };
 
 const DOMAIN_DETECT   = {};
@@ -1286,7 +1286,7 @@ async function klawReview(text) {
 
 // ── GWP (구 js/services/gwp.js) ──────────────────────────────────
 let gwpActive = false;
-let _gwpOrigin = 'https://gopang.net';
+let _gwpOrigin = 'https://hondi.net';
 const _isGwp = window.parent !== window;
 
 function initGWP(user) {
@@ -1541,14 +1541,14 @@ function _setupGwpSignRequest() {
     window.removeEventListener('message', _gwpSignRequestHandler);
   }
   _gwpSignRequestHandler = (e) => {
-    const allowed = ['https://users.gopang.net'];
+    const allowed = ['https://users.hondi.net'];
     if (!allowed.includes(e.origin)) return;
     if (e.data?.type !== 'GWP_SIGN_REQUEST') return;
 
     console.log('[Market] GWP_SIGN_REQUEST 수신 → gopang 탭 포워딩');
 
     if (window.opener && !window.opener.closed) {
-      window.opener.postMessage(e.data, 'https://gopang.net');
+      window.opener.postMessage(e.data, 'https://hondi.net');
     } else {
       console.warn('[Market] gopang opener 없음 — 포워딩 실패');
       return;
@@ -1562,7 +1562,7 @@ function _setupGwpSignRequest() {
     const profileOrigin = e.origin;
 
     _gwpSignResponseHandler = (ev) => {
-      if (ev.origin !== 'https://gopang.net') return;
+      if (ev.origin !== 'https://hondi.net') return;
       if (ev.data?.type !== 'GWP_SIGN_RESPONSE' &&
           ev.data?.type !== 'GWP_SIGN_CANCELLED') return;
       window.removeEventListener('message', _gwpSignResponseHandler);
@@ -1598,15 +1598,15 @@ _setupGwpSignRequest();
               ? '&buyer_request=' + encodeURIComponent(JSON.stringify(buyer_request))
               : '')
           + (guid ? '&buyer_guid=' + encodeURIComponent(_user?.primary_guid || _user?.guid || '') : '')
-          + '&opener_origin=' + encodeURIComponent('https://market.gopang.net');
+          + '&opener_origin=' + encodeURIComponent('https://market.hondi.net');
       } else {
         // AI 비서 없음 → 기존 profile.html 경로
         const profileParam = handle
           ? 'handle=' + encodeURIComponent(handle)
           : 'guid='   + encodeURIComponent(guid || '');
         const _profileToken = new URLSearchParams(location.search).get('gopang_token') || '';
-        profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam
-          + '&opener_origin=' + encodeURIComponent('https://market.gopang.net')
+        profileURL = 'https://users.hondi.net/profile.html?gwp=1&' + profileParam
+          + '&opener_origin=' + encodeURIComponent('https://market.hondi.net')
           + (_profileToken ? '&gopang_token=' + encodeURIComponent(_profileToken) : '');
       }
 
@@ -1628,8 +1628,8 @@ _setupGwpSignRequest();
         // profile.html의 판매자 AI 비서가 [SELLER_RESPONSE] 태그를 출력하면
         // _callSellerAI()가 여기로 postMessage를 보냄
         const sellerResponseHandler = (e) => {
-          if (e.origin !== 'https://users.gopang.net' &&
-              e.origin !== 'https://gopang.net') return;
+          if (e.origin !== 'https://users.hondi.net' &&
+              e.origin !== 'https://hondi.net') return;
           if (e.data?.type !== 'GWP_SELLER_RESPONSE') return;
           window.removeEventListener('message', sellerResponseHandler);
 
@@ -1669,8 +1669,8 @@ _setupGwpSignRequest();
 
         // ── GWP_DONE 수신 (기존 로직 유지) ──────────────────────────
         const gwpDoneHandler = (e) => {
-          if (e.origin !== 'https://users.gopang.net' &&
-              e.origin !== 'https://gopang.net') return;
+          if (e.origin !== 'https://users.hondi.net' &&
+              e.origin !== 'https://hondi.net') return;
           if (e.data?.type !== 'GWP_DONE') return;
           window.removeEventListener('message', gwpDoneHandler);
           window.removeEventListener('message', sellerResponseHandler);
@@ -1679,7 +1679,7 @@ _setupGwpSignRequest();
           appendBubble('ai', summary + '\n\n재무제표가 갱신되었습니다.');
 
           if (window.opener && !window.opener.closed) {
-            window.opener.postMessage(e.data, 'https://gopang.net');
+            window.opener.postMessage(e.data, 'https://hondi.net');
           }
 
           const buyerGuid = _user?.primary_guid || _user?.guid || _user?.ipv6;
@@ -1691,7 +1691,7 @@ _setupGwpSignRequest();
               type:         'transaction',
               who:  { ipv6: buyerGuid, role: 'user', level: 'L0', recipients: ['gopang-pdv'] },
               when: { period_start: new Date().toISOString(), period_end: new Date().toISOString() },
-              where:{ svc_url: 'https://market.gopang.net/webapp.html' },
+              where:{ svc_url: 'https://market.hondi.net/webapp.html' },
               what: { summary, seller_guid: guid || null },
               how:  { method: sellerAITagMatch ? 'SELLER_AI 협상 결제 완료' : 'profile.html GWP 결제 완료' },
               why:  { goal: '거래 재무제표 반영' },
@@ -1745,7 +1745,7 @@ async function _recordLedger({ direction, amount, itemName, fsAccount, sellerGui
       body: JSON.stringify({
         tx_id:            _txId,
         guid:             guid,
-        counterpart:      direction === 'debit' ? (sellerGuid || 'market.gopang.net') : (buyerGuid || 'market.gopang.net'),
+        counterpart:      direction === 'debit' ? (sellerGuid || 'market.hondi.net') : (buyerGuid || 'market.hondi.net'),
         seller_guid:      sellerGuid  || null,
         buyer_guid:       buyerGuid   || null,
         direction:        direction,
@@ -1825,8 +1825,8 @@ async function _parseTrade(aiText, userText) {
     : 'guid='   + encodeURIComponent(seller_guid);
   // gopang_token: market URL에서 수신한 토큰을 profile에 그대로 전달 (SSO 연속성)
   const _profileToken2 = new URLSearchParams(location.search).get('gopang_token') || '';
-  const profileURL = 'https://users.gopang.net/profile.html?gwp=1&' + profileParam
-    + '&opener_origin=' + encodeURIComponent('https://market.gopang.net')
+  const profileURL = 'https://users.hondi.net/profile.html?gwp=1&' + profileParam
+    + '&opener_origin=' + encodeURIComponent('https://market.hondi.net')
     + (_profileToken2 ? '&gopang_token=' + encodeURIComponent(_profileToken2) : '');
 
   const popup = window.open(profileURL, 'gopang-profile', 'width=480,height=780,scrollbars=yes,resizable=no');
@@ -1843,7 +1843,7 @@ async function _parseTrade(aiText, userText) {
 
   // GWP_DONE 수신 대기 (profile.html에서 결제 완료 시 전송)
   const gwpHandler = (e) => {
-    if (e.origin !== 'https://users.gopang.net' && e.origin !== 'https://gopang.net') return;
+    if (e.origin !== 'https://users.hondi.net' && e.origin !== 'https://hondi.net') return;
     if (e.data?.type !== 'GWP_DONE') return;
     window.removeEventListener('message', gwpHandler);
 
@@ -1861,7 +1861,7 @@ async function _parseTrade(aiText, userText) {
         type:         'transaction',
         who:  { ipv6: _user?.primary_guid || _user?.guid, role: 'user', level: 'L0', recipients: ['gopang-pdv'] },
         when: { period_start: new Date().toISOString(), period_end: new Date().toISOString() },
-        where:{ svc_url: 'https://market.gopang.net/webapp.html' },
+        where:{ svc_url: 'https://market.hondi.net/webapp.html' },
         what: { summary, seller_guid, tx_id: e.data.tx_hash || null },
         how:  { method: 'profile.html GWP 결제 완료' },
         why:  { goal: '거래 재무제표 반영' },
@@ -1872,7 +1872,7 @@ async function _parseTrade(aiText, userText) {
 
     // GWP_DONE → gopang 탭 포워딩 (redeemClaim 트리거)
     if (window.opener && !window.opener.closed) {
-      window.opener.postMessage(e.data, 'https://gopang.net');
+      window.opener.postMessage(e.data, 'https://hondi.net');
       console.log('[Market] GWP_DONE → gopang 포워딩 완료');
     }
 
@@ -1909,7 +1909,7 @@ let _deferredInstallPrompt   = null;
 let _installBannerVisible    = false;
 
 // ── PWA ──────────────────────────────────────────────────────────
-// ServiceWorker: market.gopang.net 배포 환경에서만 활성화
+// ServiceWorker: market.hondi.net 배포 환경에서만 활성화
 // if ('serviceWorker' in navigator) { ... }
 
 function _isIOS()             { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
@@ -2242,7 +2242,7 @@ async function init(user) {
   _user = user;
   const USER_GUID = _user.guid || _user.ipv6 || 'anonymous';
 
-  CFG.system = `# 고팡 AI 비서 SP-00 v9.2\n# GUID: ${USER_GUID}\n\n## 정체성\n진짜 의도 파악 → 4단계 폭포수 처리.\n\n## 의도 파악\n[THINK] 진짜 원하는 것? 1~4단계? [/THINK]\n\n## 14대 영역\\nMKT TAX ECO MED EDU TRN GOV JUS IND ENV CUL SOC IOT\\nMKT=시장거래 TAX=세무납세 ECO=재무금융\\nMKT 트리거: 사다|팔다|구매|주문|상품명직접|시장|재고|찾아줘|얼마 → market.gopang.net 호출n\n## 4단계 폭포수\n1단계 자체해결 → 2단계 전문가 변신 → 3단계 외부AI → 4단계 웹검색\n\n## 응답 형식\n1단계: 간결하게. 2단계↑: [{코드}] {영역명}.\n위치: 시스템 주입 [현재 위치]만 사용.`;
+  CFG.system = `# 고팡 AI 비서 SP-00 v9.2\n# GUID: ${USER_GUID}\n\n## 정체성\n진짜 의도 파악 → 4단계 폭포수 처리.\n\n## 의도 파악\n[THINK] 진짜 원하는 것? 1~4단계? [/THINK]\n\n## 14대 영역\\nMKT TAX ECO MED EDU TRN GOV JUS IND ENV CUL SOC IOT\\nMKT=시장거래 TAX=세무납세 ECO=재무금융\\nMKT 트리거: 사다|팔다|구매|주문|상품명직접|시장|재고|찾아줘|얼마 → market.hondi.net 호출n\n## 4단계 폭포수\n1단계 자체해결 → 2단계 전문가 변신 → 3단계 외부AI → 4단계 웹검색\n\n## 응답 형식\n1단계: 간결하게. 2단계↑: [{코드}] {영역명}.\n위치: 시스템 주입 [현재 위치]만 사용.`;
   CFG.system_base = CFG.system;
 
   initPDV({ getUser:()=>_user, getLocation:()=>userLocation, onAfterRecord:rec=>klawReview('service',rec) });
@@ -2765,8 +2765,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (loadingEl) loadingEl.style.display = 'flex';
 });
 </script>
-<script src="https://gopang.net/gopang-wallet.js"></script>
-<script type="module" src="https://gopang.net/auth/subsystem-auth.js"></script>
+<script src="https://hondi.net/gopang-wallet.js"></script>
+<script type="module" src="https://hondi.net/auth/subsystem-auth.js"></script>
 </body>
 </html>
 
