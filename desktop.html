@@ -1105,7 +1105,7 @@ window._marketUser = null;
 
 async function _sendPdvReport(user, action) {
   try {
-    await fetch('https://gopang-proxy.tensor-city.workers.dev/pdv/report', {
+    await fetch('https://hondi-proxy.tensor-city.workers.dev/pdv/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1264,7 +1264,7 @@ async function generateSellerSite() {
       .then(r => r.text()).catch(() => '');
 
     try {
-      const res = await fetch('https://gopang-proxy.tensor-city.workers.dev/deepseek', {
+      const res = await fetch('https://hondi-proxy.tensor-city.workers.dev/deepseek', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1359,7 +1359,7 @@ async function generateSellerSite() {
     + '\n\nlegal_info: ' + JSON.stringify(_sellerLegalInfo || {}, null, 2);
 
   try {
-    const res = await fetch('https://gopang-proxy.tensor-city.workers.dev/deepseek', {
+    const res = await fetch('https://hondi-proxy.tensor-city.workers.dev/deepseek', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
