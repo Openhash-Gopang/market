@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gopang K-Market 주문 흐름 — 기술 명세</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green:     #3ecf8e;
+    --green-dk:  #2aa870;
+    --green-lt:  #e8f9f2;
+    --purple:    #534AB7;
+    --purple-lt: #EEEDFE;
+    --teal:      #0F6E56;
+    --teal-lt:   #E1F5EE;
+    --coral:     #993C1D;
+    --coral-lt:  #FAECE7;
+    --amber:     #854F0B;
+    --amber-lt:  #FAEEDA;
+    --gray-50:   #f8f9fa;
+    --gray-100:  #f1f3f5;
+    --gray-200:  #e9ecef;
+    --gray-400:  #868e96;
+    --gray-600:  #495057;
+    --gray-800:  #212529;
+    --border:    #e5e7eb;
+    --mono:      'JetBrains Mono', monospace;
+    --sans:      'Pretendard', system-ui, sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--gray-800);
+    background: #fff;
+  }
+
+  /* ── 헤더 ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    position: sticky;
+    top: 0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+  }
+  .logo {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gray-800);
+    letter-spacing: -0.3px;
+  }
+  .logo span { color: var(--green); }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--green-lt);
+    color: var(--green-dk);
+    font-family: var(--mono);
+  }
+  header nav {
+    margin-left: auto;
+    display: flex;
+    gap: 24px;
+  }
+  header nav a {
+    font-size: 13px;
+    color: var(--gray-400);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  header nav a:hover { color: var(--gray-800); }
+
+  /* ── 레이아웃 ── */
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 64px 48px 120px;
+  }
+
+  /* ── 히어로 ── */
+  .hero { margin-bottom: 72px; }
+  .hero-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--green-dk);
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.8px;
+    color: var(--gray-800);
+    margin-bottom: 20px;
+  }
+  .hero-desc {
+    font-size: 16px;
+    color: var(--gray-600);
+    max-width: 620px;
+    line-height: 1.8;
+  }
+  .meta-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--gray-400);
+    font-family: var(--mono);
+  }
+  .meta-item strong { color: var(--gray-600); font-weight: 500; }
+
+  /* ── 구분선 ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 56px 0;
+  }
+
+  /* ── 섹션 헤더 ── */
+  .phase {
+    margin-bottom: 48px;
+  }
+  .phase-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  .phase-num {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--mono);
+    margin-top: 2px;
+  }
+  .phase-num.purple { background: var(--purple-lt); color: var(--purple); }
+  .phase-num.teal   { background: var(--teal-lt);   color: var(--teal); }
+  .phase-num.amber  { background: var(--amber-lt);  color: var(--amber); }
+  .phase-num.coral  { background: var(--coral-lt);  color: var(--coral); }
+
+  .phase-title-group h2 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    color: var(--gray-800);
+    margin-bottom: 4px;
+  }
+  .phase-title-group .subtitle {
+    font-size: 13px;
+    color: var(--gray-400);
+    font-family: var(--mono);
+  }
+
+  .phase-body {
+    padding-left: 56px;
+  }
+
+  /* ── 단계 카드 ── */
+  .step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-left: 2px solid var(--border);
+    padding-left: 24px;
+    margin-bottom: 24px;
+  }
+  .step {
+    position: relative;
+    padding: 16px 0;
+  }
+  .step::before {
+    content: '';
+    position: absolute;
+    left: -29px;
+    top: 22px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .step.active::before { background: var(--green); box-shadow: 0 0 0 1px var(--green); }
+
+  .step-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 4px;
+  }
+  .step-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 6px;
+  }
+  .step-desc {
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.7;
+  }
+
+  /* ── 코드 블록 ── */
+  .code-block {
+    background: var(--gray-50);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--gray-600);
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+  .code-block .cm  { color: #6a737d; }
+  .code-block .ck  { color: var(--purple); font-weight: 500; }
+  .code-block .cs  { color: var(--teal); }
+  .code-block .cn  { color: var(--coral); }
+
+  /* ── 인라인 코드 ── */
+  code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--gray-100);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--purple);
+    border: 1px solid var(--border);
+  }
+
+  /* ── 다이어그램 플레이스홀더 ── */
+  .diagram-slot {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    background: var(--gray-50);
+    min-height: 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--gray-400);
+    font-size: 13px;
+    margin: 28px 0;
+    padding: 32px;
+    text-align: center;
+  }
+  .diagram-slot svg { opacity: 0.35; }
+  .diagram-slot .slot-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    background: var(--gray-200);
+    padding: 2px 10px;
+    border-radius: 20px;
+    color: var(--gray-600);
+  }
+
+  /* ── 정보 박스 ── */
+  .info-box {
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-size: 13px;
+    line-height: 1.7;
+    margin: 16px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .info-box.purple { background: var(--purple-lt); border-left: 3px solid var(--purple); }
+  .info-box.teal   { background: var(--teal-lt);   border-left: 3px solid var(--teal); }
+  .info-box.amber  { background: var(--amber-lt);  border-left: 3px solid var(--amber); }
+  .info-box.coral  { background: var(--coral-lt);  border-left: 3px solid var(--coral); }
+  .info-box .ib-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .info-box.purple .ib-label { color: var(--purple); }
+  .info-box.teal   .ib-label { color: var(--teal); }
+  .info-box.amber  .ib-label { color: var(--amber); }
+  .info-box.coral  .ib-label { color: var(--coral); }
+  .info-box p { color: var(--gray-600); }
+
+  /* ── 핵심 원칙 테이블 ── */
+  .principle-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .principle-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    background: #fff;
+  }
+  .principle-card .p-num {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--green-dk);
+    margin-bottom: 6px;
+  }
+  .principle-card .p-text {
+    font-size: 12.5px;
+    color: var(--gray-600);
+    line-height: 1.6;
+  }
+
+  /* ── Hash 흐름 다이어그램 텍스트 ── */
+  .hash-flow {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.9;
+    color: var(--gray-600);
+    background: var(--gray-50);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+  .hash-flow .hf-arrow { color: var(--green-dk); font-weight: 600; }
+  .hash-flow .hf-key   { color: var(--purple); }
+  .hash-flow .hf-val   { color: var(--coral); }
+  .hash-flow .hf-note  { color: var(--gray-400); }
+
+  /* ── P17 수정 강조 ── */
+  .patch-banner {
+    border: 1.5px solid var(--amber);
+    border-radius: 10px;
+    padding: 16px 20px;
+    background: var(--amber-lt);
+    margin: 16px 0;
+  }
+  .patch-banner .pb-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .patch-banner .pb-tag {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--mono);
+    background: var(--amber);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .patch-banner .pb-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--amber);
+  }
+  .patch-banner p {
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.7;
+  }
+
+  /* ── Mermaid 코드 섹션 ── */
+  .mermaid-section {
+    margin-top: 56px;
+  }
+  .mermaid-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .mermaid-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .mermaid-code {
+    background: #1a1b26;
+    border-radius: 10px;
+    padding: 24px 28px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+    color: #a9b1d6;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .mermaid-code .mc-kw  { color: #7aa2f7; }
+  .mermaid-code .mc-pt  { color: #9ece6a; }
+  .mermaid-code .mc-msg { color: #e0af68; }
+  .mermaid-code .mc-nt  { color: #bb9af7; }
+  .mermaid-code .mc-cm  { color: #565f89; font-style: italic; }
+  .mermaid-code .mc-rect { color: #f7768e; }
+
+  /* ── 푸터 ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+  footer a { color: var(--gray-400); text-decoration: none; }
+  footer a:hover { color: var(--gray-800); }
+
+  @media (max-width: 640px) {
+    .page { padding: 40px 24px 80px; }
+    header { padding: 0 24px; }
+    header nav { display: none; }
+    .hero h1 { font-size: 26px; }
+    .principle-grid { grid-template-columns: 1fr; }
+    .phase-body { padding-left: 0; }
+    footer { flex-direction: column; gap: 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<header>
+  <span class="logo">Go<span>pang</span></span>
+  <span class="badge">K-Market</span>
+  <nav>
+    <a href="#phase1">발화</a>
+    <a href="#phase2">검색</a>
+    <a href="#phase3">서명</a>
+    <a href="#phase4">L1</a>
+    <a href="#phase5">갱신</a>
+    <a href="#phase6">PDV</a>
+    <a href="#mermaid">다이어그램</a>
+  </nav>
+</header>
+
+<!-- ── 본문 ── -->
+<div class="page">
+
+  <!-- 히어로 -->
+  <div class="hero">
+    <p class="hero-eyebrow">기술 명세 · AI City Inc. 팀 주피터</p>
+    <h1>고팡 K-Market<br>주문·결제·해시·PDV 전체 흐름</h1>
+    <p class="hero-desc">
+      사용자 발화부터 L1 블록 생성, IndexedDB Hash Chain 갱신,
+      Supabase PDV 백업까지 — 코드 기준 6단계 시퀀스 해설.
+      gopang-app.js · gopang-wallet.js · main.pb.js · Worker v4.9 반영.
+    </p>
+    <div class="meta-row">
+      <span class="meta-item">버전 <strong>handover_v4 / v1.2 patch</strong></span>
+      <span class="meta-item">파일럿 <strong>제주 한림읍</strong></span>
+      <span class="meta-item">L1 <strong>168.110.123.175:8091</strong></span>
+      <span class="meta-item">작성 <strong>2026-06-12</strong></span>
+    </div>
+  </div>
+
+  <!-- 아키텍처 원칙 -->
+  <div class="principle-grid">
+    <div class="principle-card">
+      <div class="p-num">P1</div>
+      <div class="p-text">고팡이 허브. 하위 시스템은 스포크. 시스템 간 직접 교신 없음.</div>
+    </div>
+    <div class="principle-card">
+      <div class="p-num">P2</div>
+      <div class="p-text">PDV는 Worker <code>/pdv/report</code> 경유 필수. 직접 INSERT 금지.</div>
+    </div>
+    <div class="principle-card">
+      <div class="p-num">P3</div>
+      <div class="p-text">모든 PDV 기록은 6하 원칙 (who/when/where/what/how/why) 필수.</div>
+    </div>
+    <div class="principle-card">
+      <div class="p-num">P4</div>
+      <div class="p-text">OpenHash 앵커링은 gopang-proxy Worker 단독 책임.</div>
+    </div>
+    <div class="principle-card">
+      <div class="p-num">P5</div>
+      <div class="p-text"><code>session_id</code>로 중복 PDV 방지. 최하위 이행 시스템 1회만 기록.</div>
+    </div>
+    <div class="principle-card">
+      <div class="p-num">P6</div>
+      <div class="p-text">재무제표 갱신 권한은 사용자 본인에게만. <code>redeemClaim()</code> 경유.</div>
+    </div>
+  </div>
+
+  <!-- 다이어그램 삽입 자리 -->
+  <div class="diagram-slot">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <path d="M3 9h18M9 21V9"/>
+    </svg>
+    <p>Mermaid 시퀀스 다이어그램 삽입 위치</p>
+    <span class="slot-label">gopang-order-flow.svg</span>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ① 발화 → K-Market 실행 -->
+  <div class="phase" id="phase1">
+    <div class="phase-header">
+      <div class="phase-num purple">①</div>
+      <div class="phase-title-group">
+        <h2>발화 → K-Market 실행</h2>
+        <span class="subtitle">gopang.net · gopang-app.js · callAI() · _gwpLaunch()</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="step-list">
+        <div class="step active">
+          <div class="step-label">사용자 입력</div>
+          <div class="step-title">채팅창에 "짜장면 주문해줘" 입력</div>
+          <div class="step-desc"><code>sendMessage()</code>가 호출되어 <code>callAI(text)</code>로 진입합니다. history는 최근 20턴 (<code>slice(-20,-1)</code>)으로 제한하고 DeepSeek KV Cache를 위해 캐시버스터 없이 SP를 전송합니다.</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">LLM 호출</div>
+          <div class="step-title">callAI() → DeepSeek (SP-00, max_tokens 800)</div>
+          <div class="step-desc">SP-00은 <code>gopang-app.js</code> 내 <code>CFG.system</code>에 하드코딩된 문자열입니다. localStorage 오염 방지를 위해 <code>system_base</code>로 백업 후 매 호출마다 복원합니다. KV Cache 절감율 실측 96% (<code>cached=1920/prompt=2002</code>).</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">태그 감지</div>
+          <div class="step-title">[GWP:kcommerce] 감지 → _gwpLaunch()</div>
+          <div class="step-desc">스트리밍 응답에서 <code>[GWP:kcommerce]</code> 태그를 감지하면 <code>getService('kcommerce')</code>로 서비스 정의를 조회한 뒤 <code>_gwpLaunch()</code>를 실행합니다. 기존 탭이 열려 있으면 닫고 새 ctx로 재시작합니다 (P2 수정).</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">탭 오픈</div>
+          <div class="step-title">market.gopang.net 새 탭 실행</div>
+          <div class="step-desc">컨텍스트를 <code>btoa(unescape(encodeURIComponent(ctx)))</code>로 Base64 인코딩한 뒤 URL 파라미터로 전달합니다. 모바일 팝업 차단 우회를 위해 사용자 탭 직후 예약한 빈 탭(<code>_preTab</code>)의 URL을 교체합니다.</div>
+          <div class="code-block"><span class="ck">market.gopang.net</span>/webapp.html
+  ?gwp=<span class="cs">1</span>
+  &amp;token=<span class="cn">{_USER.guid}</span>
+  &amp;origin=<span class="cn">https://gopang.net</span>
+  &amp;ctx=<span class="cn">{base64}</span>
+  &amp;ctx_enc=<span class="cs">b64</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ② 판매자 검색 → profile 팝업 -->
+  <div class="phase" id="phase2">
+    <div class="phase-header">
+      <div class="phase-num teal">②</div>
+      <div class="phase-title-group">
+        <h2>판매자 검색 → profile 팝업</h2>
+        <span class="subtitle">market/webapp.html · SP-KMARKET · search_entities RPC</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="step-list">
+        <div class="step active">
+          <div class="step-label">SP 로드</div>
+          <div class="step-title">SP-KMARKET GitHub raw fetch (캐시버스터 없음)</div>
+          <div class="step-desc"><code>loadSystemPrompt().then(() => sendMessage())</code> 순서로 SP 로드 완료 후 ctx를 자동 전송합니다. 캐시버스터(<code>?t=Date.now()</code>) 제거로 DeepSeek KV Cache가 정상 적중합니다 (P1 수정).</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">검색</div>
+          <div class="step-title">[SEARCH] 태그 감지 → /search RPC</div>
+          <div class="step-desc">SP 지시에 따라 LLM이 <code>[SEARCH]{"keyword":"짜장면","occupation":"중식 음식점업"}</code> 태그를 출력하면 Worker <code>/search</code> 엔드포인트를 통해 Supabase <code>search_entities</code> RPC를 호출합니다. <code>p_entity_type: null</code>로 설정해야 <code>business</code> 타입 업체가 검색됩니다 (버그 수정).</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">팝업</div>
+          <div class="step-title">[OPEN_PROFILE] → profile.html 팝업</div>
+          <div class="step-desc">2차 LLM 호출에서 <code>[OPEN_PROFILE:{"handle":"@geumneung","guid":"dummy-hanlim-003"}]</code> 태그가 나오면 <code>users.gopang.net/profile.html</code>을 팝업으로 엽니다.</div>
+          <div class="code-block"><span class="ck">users.gopang.net</span>/profile.html
+  ?gwp=<span class="cs">1</span>
+  &amp;guid=<span class="cn">dummy-hanlim-003</span>
+  &amp;opener_origin=<span class="cn">https://market.gopang.net</span></div>
+        </div>
+      </div>
+      <div class="info-box teal">
+        <span class="ib-label">주의</span>
+        <p><code>params</code> 선언이 반드시 <code>OPENER_ORIGIN</code> 선언보다 앞에 있어야 TDZ ReferenceError를 피할 수 있습니다. <code>p_entity_type: 'org'</code>를 사용하면 <code>business</code> 타입 업체가 누락됩니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ③ GWP 서명 흐름 -->
+  <div class="phase" id="phase3">
+    <div class="phase-header">
+      <div class="phase-num purple">③</div>
+      <div class="phase-title-group">
+        <h2>GWP 서명 흐름 (3-탭 relay)</h2>
+        <span class="subtitle">profile → market → gopang → market → profile</span>
+      </div>
+    </div>
+    <div class="phase-body">
+
+      <div class="hash-flow">
+<span class="hf-key">profile</span>  <span class="hf-arrow">──GWP_SIGN_REQUEST──▶</span>  <span class="hf-key">market</span>  <span class="hf-arrow">──relay──▶</span>  <span class="hf-key">gopang</span>
+<span class="hf-key">gopang</span>  <span class="hf-arrow">──GWP_SIGN_RESPONSE─▶</span>  <span class="hf-key">market</span>  <span class="hf-arrow">──relay──▶</span>  <span class="hf-key">profile</span>
+<span class="hf-note">※ market이 중계자(relay) 역할. Same-Origin 정책상 profile↔gopang 직접 교신 불가.</span>
+      </div>
+
+      <div class="step-list">
+        <div class="step active">
+          <div class="step-label">주문 요청</div>
+          <div class="step-title">주문하기 클릭 → requestSign() 즉시 호출</div>
+          <div class="step-desc">중간 확인 시트 없이 <code>requestSign()</code>이 직접 호출됩니다. tx 객체(seller_guid, outputs, items, total)를 담은 <code>GWP_SIGN_REQUEST</code>를 <code>window.opener</code>(market)에 postMessage합니다.</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">서명 UI</div>
+          <div class="step-title">_handleGwpSignRequest() → 서명 확인 카드 렌더링</div>
+          <div class="step-desc">gopang 채팅창에 인라인으로 판매자명·품목·합계·현재잔액·결제 후 잔액을 보여주는 카드를 렌더링합니다. 잔액 부족 시 서명 버튼이 비활성화됩니다. 서명 중복 방지를 위해 <code>_gwpSignPending[sessionId]</code>에 tx와 sourceWin을 임시 저장합니다.</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">서명 실행</div>
+          <div class="step-title">wallet.sign(tx) → Ed25519 서명</div>
+          <div class="step-desc"><code>_gwpSignExecute()</code>가 <code>window.gopangWallet.sign(tx)</code>를 호출합니다. 내부 흐름은 아래와 같습니다.</div>
+          <div class="code-block"><span class="cm">// gopang-wallet.js sign() 내부</span>
+<span class="ck">1.</span> buildPrevSettleHash()
+     → IDB <span class="cs">financial_state.block_hash</span> 읽기
+     → null이면 최초 거래 (L1 prev 검증 건너뜀)
+
+<span class="ck">2.</span> buildTxWithPrevHash({..., prevSettleHash})
+     → tx.input.prev_settle_hash = block_hash
+     → tx.input.balance_claimed  = bs-cash
+
+<span class="ck">3.</span> signTx(privKey, tx)
+     → tx_hash = sha256(sortedStringify(tx))
+     → buyer_sig = Ed25519(privKey, tx_hash)
+
+<span class="ck">4.</span> return { tx, tx_hash, buyer_sig, buyer_public_key, prev_settle_hash }</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">응답 전달</div>
+          <div class="step-title">GWP_SIGN_RESPONSE → market → profile</div>
+          <div class="step-desc">서명 결과를 market 탭(<code>_gwpTab</code>)으로 전송합니다. market의 <code>_gwpSignResponseHandler</code>가 이를 수신해 profile로 중계합니다. 핸들러 중복 등록 방지를 위해 <code>_setupGwpSignRequest()</code>로 전역 플래그를 관리합니다.</div>
+        </div>
+      </div>
+
+      <div class="info-box purple">
+        <span class="ib-label">도메인 격리</span>
+        <p><code>gopang.net</code>과 <code>users.gopang.net</code>은 IndexedDB가 완전히 분리됩니다. 서명은 반드시 gopang.net의 wallet에서 수행해야 합니다. profile.html에서 서명을 시도하면 별도 키가 생성되어 <code>UNREGISTERED_KEY (403)</code>가 발생합니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ④ /biz/order → L1 검증 -->
+  <div class="phase" id="phase4">
+    <div class="phase-header">
+      <div class="phase-num coral">④</div>
+      <div class="phase-title-group">
+        <h2>/biz/order → L1 4단계 검증</h2>
+        <span class="subtitle">Worker v4.9 · L1 PocketBase 0.22.14 · main.pb.js</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="step-list">
+        <div class="step active">
+          <div class="step-label">주문 POST</div>
+          <div class="step-title">profile → Worker /biz/order → L1 /api/tx</div>
+          <div class="step-desc">profile이 <code>GWP_SIGN_RESPONSE</code>를 수신하면 즉시 Worker <code>/biz/order</code>에 POST합니다. Worker는 CORS·인증을 처리한 뒤 L1 <code>/api/tx</code>로 위임합니다.</div>
+          <div class="code-block"><span class="cm">// /biz/order POST body</span>
+{
+  tx, tx_hash, buyer_sig, buyer_public_key,
+  from_guid:       <span class="cs">"2601:db80:..."</span>,
+  seller_guid:     <span class="cs">"dummy-hanlim-003"</span>,
+  l1_node:         <span class="cs">"KR-JEJU-JEJU-HANLIM"</span>,
+  prev_settle_hash:<span class="cs">"4a6760..."</span>,
+  balance_claimed: <span class="cn">1000000</span>,
+  outputs:         [{ recipient_guid, amount }, ...]
+}</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">L1 검증</div>
+          <div class="step-title">4단계 파이프라인 (main.pb.js)</div>
+          <div class="step-desc">
+            PocketBase 0.22.14 JS 런타임에서 <code>"1=1"</code> 필터와 IPv6 직접 삽입 시 패닉이 발생합니다 (P12 수정). 전체 로드 후 JS <code>filter()</code>로 비교합니다.
+          </div>
+          <div class="code-block"><span class="ck">1단계</span> 서명 형식
+  !/^[0-9a-f]{64}$/.test(tx_hash) → <span class="cn">INVALID_SIGNATURE</span>
+
+<span class="ck">2단계</span> 공개키 등록
+  gdc_keys에서 buyer_public_key 조회
+  없으면 → <span class="cn">UNREGISTERED_KEY (403)</span>
+
+<span class="ck">3단계</span> prev_settle_hash 일치
+  최신 블록 content_hash와 비교
+  불일치 → <span class="cn">STALE_STATE (409)</span>
+  이중지불(동일 prev 재사용) → <span class="cn">STALE_STATE (409)</span>
+  블록 없음(최초 거래) → 건너뜀
+
+<span class="ck">4단계</span> 잔액 확인
+  balance_claimed &lt; sum(outputs) → <span class="cn">INSUFFICIENT_BALANCE (402)</span></div>
+        </div>
+        <div class="step active">
+          <div class="step-label">블록 생성</div>
+          <div class="step-title">blocks 컬렉션 저장 + l1_ledger 앵커링</div>
+          <div class="code-block">content_hash = <span class="ck">sha256</span>(tx_hash + buyer_sig + prevBlockHash)
+<span class="cm">// prevBlockHash: 이전 블록의 content_hash, 최초이면 "GENESIS"</span>
+
+blocks 컬렉션 저장: { block_type, tx_hash, buyer_guid,
+  seller_guid, buyer_sig, outputs, prev_block_hash,
+  content_hash, height, prev_settle_hash }
+
+L1 응답: { ok: true, block_hash, tx_hash, buyer_claim }</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">DB 앵커링</div>
+          <div class="step-title">Worker → Supabase fs_ledger 3행 + pdv_log</div>
+          <div class="step-desc">L1 응답 수신 직후 Worker가 동기적으로 Supabase에 기록합니다.</div>
+          <div class="code-block"><span class="cm">// fs_ledger 3행 (동일 tx_id)</span>
+구매자: direction=<span class="cs">debit</span>,  fs_account=<span class="cs">pl-purchase</span>
+판매자: direction=<span class="cs">credit</span>, fs_account=<span class="cs">pl-revenue</span>
+플랫폼: direction=<span class="cs">debit</span>,  fs_account=<span class="cs">pl-platform_fee</span>
+
+<span class="cm">// pdv_log</span>
+openhash_anchored=<span class="cs">true</span>, via_worker=<span class="cs">true</span>, reporter_svc=<span class="cs">'kmarket'</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ⑤ GWP_DONE → wallet 자기갱신 -->
+  <div class="phase" id="phase5">
+    <div class="phase-header">
+      <div class="phase-num teal">⑤</div>
+      <div class="phase-title-group">
+        <h2>GWP_DONE → wallet 자기갱신</h2>
+        <span class="subtitle">profile → market → gopang · redeemClaim() · Hash Chain</span>
+      </div>
+    </div>
+    <div class="phase-body">
+
+      <div class="hash-flow">
+<span class="hf-key">L1</span>  <span class="hf-arrow">──block_hash──▶</span>  <span class="hf-key">Worker</span>  <span class="hf-arrow">──▶</span>  <span class="hf-key">profile</span>  <span class="hf-arrow">──GWP_DONE──▶</span>  <span class="hf-key">market</span>  <span class="hf-arrow">──▶</span>  <span class="hf-key">gopang</span>
+<span class="hf-note">※ 구멍 B (P11 수정): market gwpDoneHandler에 gopang 포워딩 1줄 추가.</span>
+      </div>
+
+      <div class="step-list">
+        <div class="step active">
+          <div class="step-label">GWP_DONE 전파</div>
+          <div class="step-title">profile → market → gopang (포워딩 체인)</div>
+          <div class="step-desc">profile이 <code>GWP_DONE</code>을 market opener에 전송하고 300ms 후 자동 닫힙니다. market은 <code>gwpDoneHandler</code>에서 자체 처리 후 <code>e.data</code> 그대로 gopang으로 포워딩하고 500ms 후 닫힙니다. <code>e.data</code> 전체를 넘기는 것이 중요합니다 — 필드를 재구성하면 미래 필드 추가 시 누락 위험이 있습니다.</div>
+          <div class="code-block"><span class="cm">// GWP_DONE 페이로드</span>
+{
+  type:        <span class="cs">'GWP_DONE'</span>,
+  block_hash:  <span class="cs">"3951191b..."</span>,   <span class="cm">// L1 content_hash</span>
+  tx_hash:     <span class="cs">"txhash..."</span>,
+  buyer_claim: { direction:<span class="cs">'debit'</span>, fs_account:<span class="cs">'bs-cash'</span>, amount:<span class="cn">6000</span> },
+  pdvData:     { who, when, where, what, how, why },
+  reporter_svc:<span class="cs">'kmarket'</span>
+}</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">자기갱신</div>
+          <div class="step-title">redeemClaim({block_hash, claims}) — gopang-wallet.js</div>
+          <div class="step-desc">gopang의 <code>GWP_DONE</code> 핸들러가 <code>window.gopangWallet.redeemClaim()</code>을 호출합니다. <code>buyer_claim</code>이 단일 객체로 오는 경우 <code>[buyer_claim]</code>으로 배열 변환합니다 (구멍 C 수정).</div>
+          <div class="code-block"><span class="cm">// redeemClaim() 내부 (gopang-wallet.js)</span>
+<span class="ck">1.</span> IDB financial_state 로드
+     fs = { 'bs-cash': 1000000, ... }
+
+<span class="ck">2.</span> claims 적용
+     direction='debit' → fs['bs-cash'] -= 6000
+     → fs['bs-cash'] = 994000
+
+<span class="ck">3.</span> IDB 저장 (핵심)
+     financial_state = {
+       state:      { 'bs-cash': <span class="cn">994000</span> },
+       block_hash: <span class="cs">"3951191b..."</span>,  ← 갱신
+       updatedAt:  <span class="cs">"2026-06-12T..."</span>
+     }
+
+<span class="ck">4.</span> Hash Chain 기록
+     h_i = sha256(h_{i-1} + tx_hash + block_hash + height)
+     IDB hash_chain[height=3] = { local_hash, prev_local_hash,
+       prev_settle_hash, new_settle_hash, block_hash, recorded_at }</div>
+        </div>
+      </div>
+
+      <div class="info-box teal">
+        <span class="ib-label">불변 조건</span>
+        <p>거래 N 완료 후 거래 N+1이 성공하려면 반드시 <code>IndexedDB financial_state.block_hash === L1 blocks 컬렉션 최신 content_hash</code>여야 합니다. 이 조건이 깨지면 무조건 <code>409 STALE_STATE</code>가 발생합니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ⑥ PDV 기록 -->
+  <div class="phase" id="phase6">
+    <div class="phase-header">
+      <div class="phase-num amber">⑥</div>
+      <div class="phase-title-group">
+        <h2>PDV 기록</h2>
+        <span class="subtitle">_recordPDV() · recordPDV() · localStorage + Supabase</span>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="step-list">
+        <div class="step active">
+          <div class="step-label">중복 판단</div>
+          <div class="step-title">reporter_svc 확인 → 중복 방지</div>
+          <div class="step-desc">gopang의 <code>GWP_DONE</code> 핸들러는 <code>msg.reporter_svc</code>가 <code>'kmarket'</code>이면 자체 PDV 기록을 건너뜁니다 (원칙 P5). market이 이미 Worker 경유로 기록했기 때문입니다.</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">gopang 내부</div>
+          <div class="step-title">_recordPDV() → localStorage + Supabase 직접</div>
+          <div class="step-desc"><code>reporter_svc</code>가 없을 때만 실행됩니다. localStorage에 최대 1000건을 캐시하고, Supabase <code>pdv_log</code>에 직접 POST합니다.</div>
+
+          <div class="patch-banner">
+            <div class="pb-header">
+              <span class="pb-tag">P17 수정</span>
+              <span class="pb-title">_recordPDV user_guid / device_fp fallback</span>
+            </div>
+            <p>
+              <code>_USER.guid</code>는 Supabase <code>user_profiles</code>와 연결된 후에야 채워지는 필드입니다.
+              주문 완료 시점에는 <code>_USER.ipv6</code>만 존재하는 경우가 많아
+              <code>user_guid: _USER.guid</code>가 <code>undefined</code>가 되고
+              JSON 직렬화 시 키 자체가 생략되어 Supabase <code>NOT NULL</code> 제약에 의해 <strong>400 Bad Request</strong>가 발생했습니다.
+            </p>
+          </div>
+
+          <div class="code-block"><span class="cm">// 수정 전 (오류 발생)</span>
+user_guid: <span class="cn">_USER.guid</span>,       <span class="cm">// undefined → 키 생략 → 400</span>
+device_fp: <span class="cn">_USER.fp</span>,         <span class="cm">// undefined → null</span>
+
+<span class="cm">// 수정 후 (P17)</span>
+<span class="ck">const</span> _effectiveGuid = _USER?.guid || _USER?.ipv6 || USER_GUID;
+user_guid: <span class="cs">_effectiveGuid</span>,
+device_fp: _USER?.fp || _USER?.fpHex?.slice(<span class="cn">0</span>, <span class="cn">32</span>) || <span class="cs">null</span>,
+who_name:  <span class="cs">'GUID:'</span> + (_effectiveGuid?.slice(<span class="cn">0</span>, <span class="cn">8</span>) ?? <span class="cs">'unknown'</span>),</div>
+        </div>
+        <div class="step active">
+          <div class="step-label">market 경유</div>
+          <div class="step-title">recordPDV() → Worker /pdv/report (원칙 P2)</div>
+          <div class="step-desc">market의 <code>recordPDV()</code>는 반드시 Worker <code>/pdv/report</code>를 경유합니다. Worker가 Supabase <code>pdv_log</code>에 INSERT하면서 <code>openhash_anchored=true</code>, <code>via_worker=true</code>로 설정하고 OpenHash 앵커링을 수행합니다. 직접 INSERT는 원칙 P2 위반입니다.</div>
+          <div class="code-block"><span class="cm">// pdv_log 최종 레코드</span>
+{
+  user_guid:         <span class="cs">"2601:db80:..."</span>,
+  record_type:       <span class="cs">'service_task'</span>,
+  who_name:          <span class="cs">"GUID:2601db80"</span>,
+  what:              <span class="cs">"짜장면 주문 완료"</span>,
+  why:               <span class="cs">"K-Market 서비스 이용"</span>,
+  block_hash:        <span class="cs">"3951191b..."</span>,
+  openhash_anchored: <span class="cs">true</span>,
+  via_worker:        <span class="cs">true</span>,
+  reporter_svc:      <span class="cs">'kmarket'</span>,
+  session_id:        <span class="cs">"6f156447-..."</span>
+}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Mermaid 코드 -->
+  <div class="mermaid-section" id="mermaid">
+    <div class="mermaid-header">
+      <h2>시퀀스 다이어그램 소스 (Mermaid)</h2>
+    </div>
+    <div class="mermaid-code"><span class="mc-kw">sequenceDiagram</span>
+  autonumber
+  <span class="mc-kw">participant</span> G  <span class="mc-kw">as</span> <span class="mc-pt">gopang.net</span>
+  <span class="mc-kw">participant</span> M  <span class="mc-kw">as</span> <span class="mc-pt">market / profile</span>
+  <span class="mc-kw">participant</span> W  <span class="mc-kw">as</span> <span class="mc-pt">Worker</span>
+  <span class="mc-kw">participant</span> L1 <span class="mc-kw">as</span> <span class="mc-pt">L1 PocketBase</span>
+  <span class="mc-kw">participant</span> SB <span class="mc-kw">as</span> <span class="mc-pt">Supabase</span>
+
+  <span class="mc-rect">rect rgb(237,235,254)</span>
+    <span class="mc-nt">Note over G,M:</span> <span class="mc-msg">① 발화 → K-Market 실행</span>
+    G->>G: 사용자 발화 "짜장면 주문해줘"
+    G->>G: callAI() → DeepSeek (SP-00)
+    G->>G: [GWP:kcommerce] 감지 → _gwpLaunch()
+    G-->>M: 새 탭 오픈 (gwp=1&amp;ctx=b64)
+  <span class="mc-rect">end</span>
+
+  <span class="mc-rect">rect rgb(225,245,238)</span>
+    <span class="mc-nt">Note over M,SB:</span> <span class="mc-msg">② 판매자 검색 → profile 팝업</span>
+    M->>M: SP-KMARKET 로드 (GitHub raw)
+    M->>M: callAI() → [SEARCH] 태그 감지
+    M->>W: POST /search (keyword, lat, lng)
+    W->>SB: search_entities RPC
+    SB-->>W: 금능반점 결과
+    W-->>M: 검색 결과 반환
+    M->>M: callAI() → [OPEN_PROFILE] 태그 감지
+    M-->>M: profile.html 팝업 오픈
+  <span class="mc-rect">end</span>
+
+  <span class="mc-rect">rect rgb(250,236,231)</span>
+    <span class="mc-nt">Note over G,M:</span> <span class="mc-msg">③ GWP 서명 흐름 (3-탭 relay)</span>
+    M->>M: 사용자: 주문하기 클릭 → requestSign()
+    M->>G: GWP_SIGN_REQUEST (market relay)
+    G->>G: _handleGwpSignRequest() 서명 확인 UI 렌더링
+    G->>G: wallet.sign(tx)
+    <span class="mc-nt">Note right of G:</span> buildPrevSettleHash()<br>IDB block_hash 읽기<br>Ed25519 서명
+    G->>M: GWP_SIGN_RESPONSE (tx_hash, buyer_sig)
+    M->>M: profile로 중계
+  <span class="mc-rect">end</span>
+
+  <span class="mc-rect">rect rgb(250,238,218)</span>
+    <span class="mc-nt">Note over M,L1:</span> <span class="mc-msg">④ /biz/order → L1 4단계 검증</span>
+    M->>W: POST /biz/order
+    W->>L1: POST /api/tx
+    <span class="mc-nt">Note right of L1:</span> ① 서명 형식 검증<br>② 공개키 등록 확인<br>③ prev_settle_hash 일치<br>④ 잔액 확인
+    L1->>L1: content_hash = sha256(tx+sig+prev)
+    L1->>L1: blocks 컬렉션 저장
+    L1-->>W: ok, block_hash, buyer_claim
+    W->>SB: fs_ledger 3행 앵커링
+    W->>SB: pdv_log openhash_anchored=true
+    W-->>M: 결과 반환
+  <span class="mc-rect">end</span>
+
+  <span class="mc-rect">rect rgb(237,235,254)</span>
+    <span class="mc-nt">Note over G,M:</span> <span class="mc-msg">⑤ GWP_DONE → wallet 자기갱신</span>
+    M->>M: GWP_DONE 생성 (block_hash, buyer_claim)
+    M->>G: GWP_DONE 포워딩 (구멍 B 수정)
+    M->>M: 500ms 후 자동 닫힘
+    G->>G: redeemClaim(block_hash, claims)
+    <span class="mc-nt">Note right of G:</span> claims 적용 bs-cash 차감<br>financial_state.block_hash 갱신<br>Hash Chain 기록
+    G->>G: IDB financial_state 저장
+    G->>G: IDB hash_chain[height] 저장
+    G->>G: 거래 완료 · 잔액 표시
+  <span class="mc-rect">end</span>
+
+  <span class="mc-rect">rect rgb(225,245,238)</span>
+    <span class="mc-nt">Note over G,SB:</span> <span class="mc-msg">⑥ PDV 기록</span>
+    G->>G: _recordPDV() localStorage 캐시
+    <span class="mc-nt">Note right of G:</span> user_guid = _USER.guid<br>|| _USER.ipv6 (P17 수정)
+    G->>SB: POST /rest/v1/pdv_log (직접)
+    M->>W: recordPDV() Worker 경유 (P2 원칙)
+    W->>SB: pdv_log INSERT + OpenHash 앵커링
+  <span class="mc-rect">end</span></div>
+  </div>
+
+</div><!-- /.page -->
+
+<!-- ── 푸터 ── -->
+<footer>
+  <span>AI City Inc. · 팀 주피터 · <a href="https://gopang.net">gopang.net</a></span>
+  <span>DAWN: Democracy is All We Need · MIT License · 2026-06-12</span>
+</footer>
+
+</body>
+</html>

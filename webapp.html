@@ -1089,7 +1089,7 @@
     <div class="setting-group">
       <div class="setting-label">API 엔드포인트</div>
       <select class="setting-field" id="setting-endpoint">
-        <option value="https://gopang-proxy.tensor-city.workers.dev" selected>고팡 프록시 (보안 권장)</option>
+        <option value="https://hondi-proxy.tensor-city.workers.dev" selected>고팡 프록시 (보안 권장)</option>
         <option value="https://api.deepseek.com/v1">DeepSeek API (직접)</option>
         <option value="https://api.openai.com/v1">OpenAI API</option>
         <option value="https://api.anthropic.com/v1">Anthropic API</option>
@@ -1173,7 +1173,7 @@
 // ── config (구 config.js) ─────────────────────────────────────────
 const SUPABASE_URL  = 'https://ebbecjfrwaswbdybbgiu.supabase.co';
 const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImViYmVjamZyd2Fzd2JkeWJiZ2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NjE5ODQsImV4cCI6MjA5NTEzNzk4NH0.H2ahQKtWdSke04Pdi3hDY86pdTx7UUKPUpQMlS_zciA';
-const PROXY_BASE    = 'https://gopang-proxy.tensor-city.workers.dev';
+const PROXY_BASE    = 'https://hondi-proxy.tensor-city.workers.dev';
 const KLAW_COOLDOWN_MS = 3000;
 
 const CFG = {
@@ -1314,19 +1314,28 @@ async function initAI(user) {}
 function classifyDomain(text) { return 'general'; }
 
 // ── SP 동적 로드 ─────────────────────────────────────────────
+const UNIVERSAL_INTEGRITY_URL = 'https://raw.githubusercontent.com/Openhash-Gopang/gopang/main/prompts/UNIVERSAL-INTEGRITY_v1_0.md';
 async function loadSystemPrompt() {
   if (CFG.systemPrompt) return CFG.systemPrompt; // 캐시
+  let universalIntegrity = '';
+  try {
+    const u = await fetch(UNIVERSAL_INTEGRITY_URL);
+    if (u.ok) universalIntegrity = await u.text();
+  } catch (e) { console.warn('[SP] UNIVERSAL-INTEGRITY 로드 실패:', e.message); }
   try {
     const r = await fetch(CFG.systemPromptURL);
     if (r.ok) {
-      CFG.systemPrompt = await r.text();
+      const own = await r.text();
+      CFG.systemPrompt = universalIntegrity ? `${universalIntegrity}\n\n---\n\n${own}` : own;
       console.log('[SP] K-Market SP 로드 완료:', CFG.systemPromptURL);
       return CFG.systemPrompt;
     }
   } catch(e) {
     console.warn('[SP] SP 로드 실패, 폴백 사용:', e.message);
   }
-  CFG.systemPrompt = CFG.systemPromptFallback;
+  CFG.systemPrompt = universalIntegrity
+    ? `${universalIntegrity}\n\n---\n\n${CFG.systemPromptFallback}`
+    : CFG.systemPromptFallback;
   return CFG.systemPrompt;
 }
 
