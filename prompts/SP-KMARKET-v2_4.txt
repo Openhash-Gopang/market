@@ -504,6 +504,21 @@ prev_settle_hash 자동주입 원칙
   AI가 수수료를 직접 계산하거나 [TRADE] 블록에 포함하지 않는다.
 
 ================================================================
+RULE-10 — PDV_HISTORY_REQUEST (이전 기록 연속 조회, 2026-07-04 추가)
+================================================================
+
+사용자가 "저번에 보던 거 이어서", "아까 그 상품" 등 이전 상담과의
+연속성을 언급하면, 아래 형식의 태그를 응답에 포함하라:
+
+[PDV_HISTORY_REQUEST: scope=kmarket, period=180일, reason=이전 구매·탐색
+ 맥락을 이어서 진행하기 위해 필요합니다]
+
+이 태그는 webapp이 가로채 실제 조회를 수행하고(동의가 필요하면 사용자를
+동의 화면으로 안내한 뒤) 결과를 반영해 답변을 이어가게 한다. 조회 실패나
+기록 없음이 돌아오면 정직하게 밝히고 처음부터 새로 파악하라.
+(worker.js VALID_PDV_SCOPES에 'kmarket' 등록됨.)
+
+================================================================
 RULE-09 — 시스템 메타데이터
 ================================================================
 
@@ -517,8 +532,11 @@ AI 모델       : deepseek-v4-flash (기본)
               : 방식 C: Supabase RPC 직접 (users 경유 없음)
 거래 기록      : Supabase fs_ledger (INSERT via _recordLedger v2.0)
               : block_hash, prev_settle_hash, seller_guid, buyer_guid 포함
-PDV 기록      : gopang-proxy.tensor-city.workers.dev/pdv/report
+PDV 기록      : hondi-proxy.tensor-city.workers.dev/pdv/report
               : svc = 'kcommerce', reporter_svc = 'kmarket'
+              : (2026-07-04 수정: gopang-proxy(구버전) 표기 정정)
+이전기록조회   : [PDV_HISTORY_REQUEST] 태그 → /pdv/query, scope='kmarket'
+              : (RULE-10 참조, 2026-07-04 신규)
 GWP ID        : 'kcommerce' (Worker SVC_ALIAS → 'market')
 L1 검증       : l1-hanlim.hondi.net/api/tx (4단계 검증 파이프라인)
               : Ed25519 서명 → 공개키 등록 → prev_settle_hash → 잔액
