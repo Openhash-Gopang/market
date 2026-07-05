@@ -1181,7 +1181,7 @@ const CFG = {
   apiKey:  '',
   proxyURL: PROXY_BASE + '/deepseek',
   // ★ SP는 GitHub raw URL 동적 로드 — webapp 수정 없이 갱신 가능
-  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_4.txt',
+  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_5.txt',
   systemPrompt: null, // 런타임에 loadSystemPrompt()로 채워짐
   systemPromptFallback: '당신은 K-Market AI 구매 에이전트입니다. 한국어로 답변하세요.',
 };
@@ -1196,6 +1196,30 @@ let userLocation   = null;
 let locationReady  = false;
 let locationPending = false;
 let userAddress    = null;   // 역지오코딩 주소 캐시 {dong, sigungu, sido}
+
+// ── facts_enc=b64 (2026-07-05 신설, jeju/webapp.html 패턴 이식) ─────
+// 메인 AI 비서(hondi.net)가 GWP로 이 탭을 열 때 이미 확보한 위치 정보
+// (currentLocation). market은 지금까지 이 값을 전혀 읽지 않고 자체
+// GPS(initLocation)에만 의존했다 — GPS 권한 거부·타임아웃 시 위치
+// 힌트가 완전히 사라지는 문제가 있었다. GPS가 실패했을 때 이 값이
+// 유일하게 남는 위치 단서가 된다(우선순위: GPS > facts > 없음).
+let _urlFactsLocation = null;
+(function initFacts() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const factsRaw = params.get('facts') || '';
+    const factsEnc = params.get('facts_enc');
+    if (!factsRaw) return;
+    const json = factsEnc === 'b64'
+      ? decodeURIComponent(escape(atob(factsRaw)))
+      : decodeURIComponent(factsRaw);
+    const facts = JSON.parse(json);
+    if (facts && typeof facts.currentLocation === 'string') {
+      _urlFactsLocation = facts.currentLocation;
+      console.log('[Market] GWP facts로 위치 힌트 수신:', _urlFactsLocation);
+    }
+  } catch (e) { console.warn('[Market] facts 파싱 실패(무시):', e.message); }
+})();
 
 function scheduleLocation() {
   if (locationPending || locationReady) return;
@@ -1235,11 +1259,17 @@ function initLocation() {
   );
 }
 function buildLocNote() {
-  if (!userLocation) return '';
-  const addrStr = userAddress
-    ? ` (${[userAddress.sido, userAddress.sigungu, userAddress.dong].filter(Boolean).join(' ')})`
-    : '';
-  return `\n[위치: 위도 ${userLocation.lat.toFixed(4)}, 경도 ${userLocation.lng.toFixed(4)}${addrStr}]`;
+  if (userLocation) {
+    const addrStr = userAddress
+      ? ` (${[userAddress.sido, userAddress.sigungu, userAddress.dong].filter(Boolean).join(' ')})`
+      : '';
+    return `\n[위치: 위도 ${userLocation.lat.toFixed(4)}, 경도 ${userLocation.lng.toFixed(4)}${addrStr}]`;
+  }
+  // GPS 미확보(권한 거부·타임아웃·아직 응답 전) 시 facts 폴백 —
+  // 위경도가 없어 거리 계산엔 못 쓰지만, 지역명 검색(2-D 동의어 확장 등)
+  // 에는 여전히 활용 가능하다.
+  if (_urlFactsLocation) return `\n[위치: ${_urlFactsLocation} (GPS 미확보, GWP facts 힌트)]`;
+  return '';
 }
 function onLocationUpdate(cb) { /* 단순 폴링 대체 */ }
 
