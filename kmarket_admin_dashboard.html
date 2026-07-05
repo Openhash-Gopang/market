@@ -145,6 +145,30 @@ body:has(.sidebar:hover) .main{margin-left:var(--swe)}
 /* ── RESPONSIVE ── */
 @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.chart-grid-3{grid-template-columns:1fr 1fr}.fs-grid{grid-template-columns:1fr}}
 @media(max-width:768px){.sidebar{display:none}.main{margin-left:0!important}.kpi-row{grid-template-columns:repeat(2,1fr)}.chart-grid-2,.chart-grid-3{grid-template-columns:1fr}}
+
+/* ── AI 경영 어드바이저 (2026-07-05, k-business/business-kr 연동) ── */
+.biz-chat-fab{position:fixed;right:20px;bottom:20px;width:52px;height:52px;border-radius:50%;background:var(--brand);border:none;cursor:pointer;box-shadow:0 4px 14px rgba(62,207,142,.45);z-index:900;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.biz-chat-fab:hover{background:var(--brand-dk);transform:scale(1.05)}
+.biz-chat-panel{position:fixed;right:20px;bottom:82px;width:360px;height:500px;background:#fff;border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.16);display:flex;flex-direction:column;z-index:900;transform:translateY(12px);opacity:0;pointer-events:none;transition:all .18s ease;border:1px solid var(--border)}
+.biz-chat-panel.open{transform:translateY(0);opacity:1;pointer-events:all}
+.biz-chat-header{background:var(--brand);color:#fff;padding:12px 14px;border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.biz-chat-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.9);flex-shrink:0}
+.biz-chat-title{font-size:14px;font-weight:600;flex:1}
+.biz-chat-sub{font-size:11px;opacity:.85;display:block}
+.biz-chat-x{background:none;border:none;color:rgba(255,255,255,.85);cursor:pointer;padding:2px;display:flex;align-items:center}
+.biz-chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.biz-msg-ai,.biz-msg-user{max-width:86%;padding:9px 12px;border-radius:10px;font-size:13px;line-height:1.6;word-break:break-word;white-space:pre-wrap}
+.biz-msg-ai{background:var(--bg-subtle);color:var(--text);border-radius:3px 10px 10px 10px;align-self:flex-start}
+.biz-msg-user{background:var(--brand);color:#fff;border-radius:10px 3px 10px 10px;align-self:flex-end}
+.biz-chat-chips{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 8px;flex-shrink:0}
+.biz-chip{padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text3);cursor:pointer;transition:all .15s}
+.biz-chip:hover{background:var(--brand-bg);border-color:var(--brand)}
+.biz-chat-dock{padding:8px;border-top:1px solid var(--border);display:flex;gap:6px;flex-shrink:0}
+.biz-chat-ta{flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;font-family:var(--font);font-size:13px;color:var(--text);background:var(--bg-subtle);resize:none;outline:none;max-height:64px}
+.biz-chat-ta:focus{border-color:var(--brand);background:#fff}
+.biz-chat-send{width:30px;height:30px;border-radius:var(--radius);background:var(--brand);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.biz-chat-send:hover{background:var(--brand-dk)}
+@media(max-width:480px){.biz-chat-panel{width:calc(100vw - 24px);right:12px}}
 </style>
 </head>
 <body>
@@ -799,6 +823,133 @@ function refreshAll(){
   renderTax();
   renderAlerts();
 })();
+
+// ══════════════════════════════════════════════════════════════
+// AI 경영 어드바이저 (k-business/business-kr 연동, 2026-07-05)
+// /business/relay가 UNIVERSAL-INTEGRITY+UNIVERSAL-common+k-business+
+// business-kr을 서버에서 강제 조립한다 — 클라이언트는 이 사업체의
+// 실제 데이터 컨텍스트(agencyPrompt)와 대화 내용만 보낸다.
+// ══════════════════════════════════════════════════════════════
+const BUSINESS_PROXY      = 'https://hondi-proxy.tensor-city.workers.dev';
+const BUSINESS_RELAY_URL  = BUSINESS_PROXY + '/business/relay';
+
+function _bizGuid() {
+  let g = localStorage.getItem('kmarket_admin_biz_guid');
+  if (!g) {
+    g = (crypto.randomUUID ? crypto.randomUUID() : 'biz-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    localStorage.setItem('kmarket_admin_biz_guid', g);
+  }
+  return g;
+}
+
+// ADMIN_DATA를 AI가 참조할 수 있는 사업체 컨텍스트 텍스트로 요약.
+// 원본 수치를 임의로 가공하지 않고 그대로 전달해, AI가 U2(정확성
+// 원칙)에 따라 실제 값 기준으로만 답하도록 한다.
+function _buildBizContext() {
+  const d = ADMIN_DATA;
+  const fs = d.finance.income_stmt.map(r => `${r.label}: ${r.val}`).join(', ');
+  const hrEmp = d.hr.employees.map(e => `${e.name}(${e.role}, 급여 ${e.salary.toLocaleString()}원, ${e.status})`).join('; ');
+  const taxUpcoming = d.tax.upcoming.map(t => `${t.name} (기한 ${t.due}, ${t.amount.toLocaleString()}원, ${t.status})`).join('; ');
+  return `[사업체 컨텍스트 — ${d.store_name}, ${d.period} 기준. 아래는 이 사업체의 실제 대시보드 데이터이며, 임의로 다른 값을 지어내지 말고 이 데이터를 근거로 답하십시오.]
+- 이번달 매출: ${d.kpis[0].val} (전월 대비 ${d.kpis[0].change}%)
+- 손익계산서: ${fs}
+- 직원 현황: ${hrEmp}
+- 이번달 인건비: ${d.hr.kpis[1].val}
+- 다가오는 세금 일정: ${taxUpcoming}
+- 올해 누계 납부세액: ${d.tax.ytd_tax_paid.toLocaleString()}원 / 연간 예상: ${d.tax.estimated_annual.toLocaleString()}원`;
+}
+
+let _bizHistory = [];
+
+function toggleBizChat() {
+  const panel = document.getElementById('biz-chat-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open') && !_bizHistory.length) {
+    _appendBizMsg('ai', `안녕하세요, ${ADMIN_DATA.store_name} 사장님. 재무제표·세금·인사 관련 무엇이든 물어보세요. (초안 준비까지만 도와드리며, 실제 신고·확정은 사장님 확인이 필요합니다.)`);
+  }
+}
+
+function _appendBizMsg(role, text) {
+  const box = document.getElementById('biz-chat-messages');
+  const div = document.createElement('div');
+  div.className = role === 'ai' ? 'biz-msg-ai' : 'biz-msg-user';
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function sendBizChip(text) {
+  document.getElementById('biz-chat-input').value = text;
+  sendBizChat();
+}
+
+async function sendBizChat() {
+  const input = document.getElementById('biz-chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = ''; input.style.height = 'auto';
+
+  _appendBizMsg('user', text);
+  _bizHistory.push({ role: 'user', content: text });
+
+  const typing = document.createElement('div');
+  typing.className = 'biz-msg-ai';
+  typing.id = 'biz-typing';
+  typing.textContent = '…';
+  document.getElementById('biz-chat-messages').appendChild(typing);
+
+  try {
+    const res = await fetch(BUSINESS_RELAY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        guid: _bizGuid(),
+        business_id: ADMIN_DATA.store_name,
+        agencyPrompt: _buildBizContext(),
+        messages: _bizHistory,
+        max_tokens: 700,
+        stream: false,
+        tier: 'biz-flash',
+      }),
+    });
+    document.getElementById('biz-typing')?.remove();
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || '(응답 없음)';
+    _appendBizMsg('ai', reply);
+    _bizHistory.push({ role: 'assistant', content: reply });
+  } catch (e) {
+    document.getElementById('biz-typing')?.remove();
+    _appendBizMsg('ai', `죄송합니다, 일시적 오류가 발생했습니다(${e.message}). 잠시 후 다시 시도해 주세요.`);
+  }
+}
 </script>
+<!-- AI 경영 어드바이저 (k-business/business-kr 연동, 2026-07-05) -->
+<button class="biz-chat-fab" id="biz-chat-fab" onclick="toggleBizChat()">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+</button>
+<div class="biz-chat-panel" id="biz-chat-panel">
+  <div class="biz-chat-header">
+    <span class="biz-chat-dot"></span>
+    <div><div class="biz-chat-title">AI 경영 어드바이저</div><span class="biz-chat-sub">재무·세금·인사 상담 · k-business</span></div>
+    <button class="biz-chat-x" onclick="toggleBizChat()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="biz-chat-messages" id="biz-chat-messages"></div>
+  <div class="biz-chat-chips" id="biz-chat-chips">
+    <button class="biz-chip" onclick="sendBizChip('이번 달 재무제표 요약해줘')">재무제표 요약</button>
+    <button class="biz-chip" onclick="sendBizChip('부가세 신고 준비해줘')">세금 신고 준비</button>
+    <button class="biz-chip" onclick="sendBizChip('직원 급여 계산 도와줘')">급여 계산</button>
+    <button class="biz-chip" onclick="sendBizChip('절세할 수 있는 방법 있어?')">절세 상담</button>
+  </div>
+  <div class="biz-chat-dock">
+    <textarea class="biz-chat-ta" id="biz-chat-input" rows="1" placeholder="재무·세금·인사 관련 무엇이든 물어보세요…"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendBizChat()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,64)+'px'"></textarea>
+    <button class="biz-chat-send" onclick="sendBizChat()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
