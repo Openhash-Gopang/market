@@ -1269,6 +1269,7 @@ async function generateSellerSite() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'deepseek-chat',
+          service_id: 'kcommerce', // 2026-07-05: UNIVERSAL 레이어 강제 주입
           messages: [
             { role: 'system', content: CHECK_SP },
             { role: 'user', content: input + fileContext }
@@ -1364,6 +1365,7 @@ async function generateSellerSite() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'deepseek-chat',
+        service_id: 'kcommerce', // 2026-07-05: UNIVERSAL 레이어 강제 주입
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userMsg }

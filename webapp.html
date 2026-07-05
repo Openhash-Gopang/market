@@ -1356,6 +1356,7 @@ async function callAI(userText, imageFile) {
       headers: { 'Content-Type':'application/json' },
       body: JSON.stringify({
         model: CFG.model,
+        service_id: 'kcommerce', // 2026-07-05: UNIVERSAL 레이어 강제 주입
         messages,
         stream: true,
         max_tokens: 800,
@@ -1521,7 +1522,7 @@ async function callAI(userText, imageFile) {
       const res2 = await fetch(PROXY_BASE + '/deepseek', {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ model: CFG.model, messages: messages2, stream: true, max_tokens: 800, thinking: { type: "disabled" } }),
+        body: JSON.stringify({ model: CFG.model, service_id: 'kcommerce', messages: messages2, stream: true, max_tokens: 800, thinking: { type: "disabled" } }),
       });
       if (res2.ok) {
         const reader2 = res2.body.getReader();
