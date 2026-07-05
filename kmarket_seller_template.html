@@ -862,6 +862,8 @@ footer{background:#e8f5ee;color:#1a2e22;padding:36px 5%;font-size:14px}
   </div>
 </div>
 
+<script src="https://users.hondi.net/gopang-wallet.js"></script>
+<script src="/gopang-seller-catalog.js"></script>
 <script>
 // ══════════════════════════════════════════════════════
 // K-Market 판매자 사이트 템플릿 v3.0
@@ -1598,7 +1600,39 @@ new IntersectionObserver(entries=>entries.forEach(e=>{
 );
 
 // ── 초기화 ────────────────────────────────────────────
-(function init(){
+// 2026-07-05: 오픈해시 원칙 반영 — 이 페이지에 하드코딩된 SELLER_DATA.products는
+// LLM이 최초 1회 추출한 "시드"일 뿐, 원본이 아니다. 로컬 IndexedDB
+// (gopang-seller-catalog.js, 이 판매자 기기)가 원본이고, 이후 상품
+// 등록/수정/삭제는 전부 SellerCatalog API를 거쳐야 한다. 여기서는
+// (1) 로컬이 비어있으면 서버 백업에서 복원을 시도하고, 그래도 비어있으면
+// SELLER_DATA.products(방금 생성된 시드)를 최초 1회 로컬에 심는다,
+// (2) 렌더링 직전 로컬 카탈로그로 SELLER_DATA.products를 덮어써
+// 항상 "로컬이 최신"이 되도록 한다.
+async function _initSellerCatalog() {
+  if (!window.SellerCatalog) {
+    console.warn('[Catalog] gopang-seller-catalog.js 로드 실패 — 정적 SELLER_DATA.products로 폴백');
+    return;
+  }
+  try {
+    const { hydrated, count } = await window.SellerCatalog.hydrateFromServerIfEmpty();
+    if (hydrated) {
+      console.log('[Catalog] 서버 백업에서 복원 완료 —', count, '개');
+    } else if (count === 0 && Array.isArray(SELLER_DATA.products) && SELLER_DATA.products.length) {
+      // 로컬도 비고 서버 백업도 없음(신규 판매자) — 방금 생성된 시드를 최초 1회 심는다
+      for (const p of SELLER_DATA.products) {
+        await window.SellerCatalog.putProduct({ ...p });
+      }
+      console.log('[Catalog] 신규 판매자 — LLM 추출 시드', SELLER_DATA.products.length, '개를 로컬에 저장(자동 동기화 예약됨)');
+    }
+    const local = await window.SellerCatalog.listProducts();
+    if (local.length) SELLER_DATA.products = local; // 로컬이 항상 최신 소스
+  } catch (e) {
+    console.warn('[Catalog] 초기화 실패, 정적 SELLER_DATA.products로 폴백:', e.message);
+  }
+}
+
+(async function init(){
+  await _initSellerCatalog();
   bindData(SELLER_DATA);
   renderFilters();
   renderProducts();

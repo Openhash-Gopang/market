@@ -1352,7 +1352,13 @@ async function generateSellerSite() {
     }
   }
 
-  const SYSTEM_PROMPT = await fetch('/prompts/SP-MKT_seller_site_v2.0.txt')
+  // 2026-07-05: v2.0 → v3.0. v2.0은 리뷰·신용점수·재무제표·인건비·세금
+  // 일정·재고/경쟁사 알림까지 "realistic하게" 지어내라고 지시했었다
+  // (SP-KMARKET RULE-01 금지-8과 충돌하는 설계, 실사로 발견). v3.0은
+  // 판매자가 실제로 말한 사실만 추출하고 ADMIN_DATA(재무/인사/세금
+  // 대시보드) 생성 자체를 제거했다 — 아래 ADMIN_DATA 교체 분기는
+  // rawData에 그 블록이 더 이상 없으므로 자연히 스킵된다.
+  const SYSTEM_PROMPT = await fetch('/prompts/SP-MKT_seller_site_v3.0.txt')
     .then(r => r.text())
     .catch(() => 'Extract seller data and return only: const SELLER_DATA = { ... };');
 
