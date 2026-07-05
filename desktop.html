@@ -594,7 +594,7 @@ function closeWebApp() {
   document.body.style.overflow = '';
 }
 </script>
-<script src="https://users.hondi.net/gopang-wallet.js"></script>
+<script src="https://hondi.net/gopang-wallet.js"></script>
 <script src="/gopang-seller-catalog.js"></script>
 </head>
 <body>
@@ -1170,60 +1170,65 @@ let _sellerStep = 'check';      // 'check' | 'generate'
 let _sellerInitialInput = '';   // 1단계 원본 입력
 let _sellerLegalInfo = null;    // 검증된 법적 정보
 
-// ── 2026-07-05 신설: 라이브 등록(프로필+카탈로그) ──────────────────
-// ★ 알려진 한계 ★ subsystem-auth.js가 주는 _marketUser.ipv6는 로그인
-// 확인용일 뿐 서명키가 없다. 서명키(Ed25519)는 gopang-wallet.js가
-// origin별 localStorage에 관리하는데, market.hondi.net은 users.hondi.net과
-// 다른 origin이라 같은 guid로 여기서 새 키를 만들면 users.hondi.net에
-// 이미 등록된 pubkey와 어긋나 PUBKEY_MISMATCH가 난다. 이 문제를 근본
-// 해결하려면 opener 창(로그인된 hondi.net 세션)에 서명을 중계 요청하는
-// 프로토콜이 필요한데(§13 PDV 중개와 같은 패턴), 이번 범위에는 포함하지
-// 않았다 — 지금은 "K-Market 판매자 온보딩 도구로 처음 가입"하는 별도
-// 경로로 취급해 이 origin 전용 guid/키를 새로 발급한다. 즉 이 도구로
-// 만든 K-Market 판매자 정체성은 이용자의 개인 통합 정체성(나만의
-// AI비서)과 지금은 분리돼 있다 — 추후 cross-origin 서명 중계로
-// 합쳐야 한다.
-async function _buildDeviceFingerprint() {
-  const raw = [
-    navigator.userAgent, navigator.language,
-    screen.width + 'x' + screen.height, screen.colorDepth,
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    navigator.hardwareConcurrency || '', navigator.deviceMemory || '', screen.pixelDepth || '',
-  ].join('|');
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-async function _buildIPv6Identity(fpHex) {
-  const groups = [];
-  for (let i = 0; i < 8; i++) groups.push(fpHex.slice(i*4, i*4+4));
-  groups[0] = '2601'; groups[1] = 'db80';
-  return groups.join(':');
-}
-async function _ensureSellerIdentity() {
-  let stored;
-  try { stored = JSON.parse(localStorage.getItem('gopang_seller_v1') || 'null'); }
-  catch (e) { stored = null; }
-  if (!stored || !stored.ipv6) {
-    const fpHex = await _buildDeviceFingerprint();
-    const ipv6 = await _buildIPv6Identity(fpHex);
-    stored = { ipv6, fpHex, registeredAt: new Date().toISOString() };
-    localStorage.setItem('gopang_seller_v1', JSON.stringify(stored));
-  }
-  for (let i = 0; i < 50; i++) {
-    if (window.gopangWallet) break;
-    await new Promise(r => setTimeout(r, 100));
-  }
-  if (!window.gopangWallet) throw new Error('지갑 초기화 실패 — 페이지를 새로고침해 주세요.');
-  if (!window.gopangWallet.guid) window.gopangWallet.setIdentity({ guid: stored.ipv6 });
-  return stored;
-}
-async function _sellerSignRequest(payload) {
-  const wallet = window.gopangWallet;
-  const msgBytes = new TextEncoder().encode(JSON.stringify(payload));
-  const sigBuf = await crypto.subtle.sign('Ed25519', wallet._privKey, msgBytes);
-  const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return { ...payload, signature };
+// ── 2026-07-05: cross-origin 서명 중계로 교체 ────────────────────
+// 이전(★ 알려진 한계 ★로 기록됐던) 방식: market.hondi.net origin에서
+// 기기 핑거프린트로 새 guid/키를 자체 발급했다. 문제: users_profiles.guid에
+// 이미 핀(pin)된 개인 pubkey와 달라 PUBKEY_MISMATCH가 나거나, 애초에
+// K-Market 판매자 정체성이 이용자의 개인 통합 정체성과 분리되어 버렸다.
+//
+// 지금 방식: hondi.net/auth/silent-sign.html(§6.2 Ed25519+TOFU 서명을
+// 대리 수행하는 페이지)을 iframe으로 열어, 진짜 개인 키(hondi.net origin)
+// 로 서명한 결과만 postMessage로 받는다. 이 도구로 만든 사업자 프로필은
+// 처음부터 이용자의 개인 guid에 귀속되며, 별도 guid를 새로 만들지 않는다.
+// 사용자는 hondi.net에 이미 가입되어 있어야 한다(§5.1 — 고팡이 유일한
+// 인증 포털). 미가입 상태면 NOT_REGISTERED를 반환하니, 먼저 hondi.net에서
+// 가입을 완료해 달라고 안내한다.
+function _relayProfileSign(payload, { svc = 'market', timeoutMs = 120000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const sessionId = crypto.randomUUID();
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://hondi.net/auth/silent-sign.html?svc=${encodeURIComponent(svc)}`;
+    iframe.style.cssText = `
+      position:fixed;inset:0;width:100%;height:100%;
+      border:none;z-index:9999;background:transparent;`;
+
+    let settled = false;
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', onMessage);
+      clearTimeout(timer);
+      iframe.remove();
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('SIGN_TIMEOUT'));
+    }, timeoutMs);
+
+    function onMessage(e) {
+      if (e.origin !== 'https://hondi.net') return;
+      if (e.data?.type !== 'GWP_PROFILE_SIGN_RESPONSE') return;
+      if (e.data.session_id !== sessionId) return;
+      cleanup();
+      if (e.data.ok) resolve(e.data);
+      else reject(new Error(e.data.error || 'SIGN_FAILED'));
+    }
+    window.addEventListener('message', onMessage);
+
+    iframe.addEventListener('load', () => {
+      iframe.contentWindow.postMessage({
+        type: 'GWP_PROFILE_SIGN_REQUEST',
+        session_id: sessionId,
+        payload,
+      }, 'https://hondi.net');
+    });
+    iframe.addEventListener('error', () => {
+      cleanup();
+      reject(new Error('IFRAME_LOAD_FAILED'));
+    });
+
+    document.body.appendChild(iframe);
+  });
 }
 
 // SELLER_DATA(파싱된 실제 객체)를 /profile + /biz/catalog/sync에 라이브 등록.
@@ -1232,13 +1237,15 @@ async function _registerSellerLive(sellerData) {
   const statusEl = document.getElementById('live-register-status');
   try {
     if (!statusEl) return;
-    statusEl.textContent = '라이브 등록 중…';
-    await _ensureSellerIdentity();
-    const wallet = window.gopangWallet;
+    statusEl.textContent = '본인 확인을 위해 hondi.net 서명 창을 여는 중…';
 
-    // 1) /profile — 검색 가능한 엔티티로 등록/갱신
+    // entity_type/name 등만 담는다 — guid/pubkey는 relay가 실제 개인
+    // 정체성(hondi.net origin)에서 채워서 돌려준다. 서명은 이 payload가
+    // 아니라 'guid:pubkey:ts' 고정 문자열에 대해 이루어지므로(worker.js
+    // handleProfilePost 기준), 여기 필드 순서는 서명과 무관하다 — 다만
+    // /profile로 보낼 body는 아래에서 이 profilePayload를 그대로 펼쳐
+    // 재사용한다.
     const profilePayload = {
-      guid: wallet.guid, pubkey: wallet.publicKeyB64u,
       entity_type: 'business',
       name: sellerData.business?.name || '',
       address: sellerData.business?.address || '',
@@ -1247,15 +1254,28 @@ async function _registerSellerLive(sellerData) {
       is_public: true,
       industry_fields: sellerData.industry_fields || null,
     };
-    const ts = String(Date.now());
-    const sigMsg = `${wallet.guid}:${wallet.publicKeyB64u}:${ts}`;
-    const sigBuf = await crypto.subtle.sign('Ed25519', wallet._privKey, new TextEncoder().encode(sigMsg));
-    const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 
+    let signed;
+    try {
+      signed = await _relayProfileSign(profilePayload, { svc: 'market' });
+    } catch (relayErr) {
+      const hint = relayErr.message === 'NOT_REGISTERED'
+        ? 'hondi.net에 먼저 가입해 주세요 (hondi.net에서 개인 계정을 만든 뒤 다시 시도).'
+        : relayErr.message === 'USER_CANCELLED'
+          ? '서명을 취소했습니다.'
+          : `본인 확인 실패: ${relayErr.message}`;
+      throw new Error(hint);
+    }
+
+    statusEl.textContent = '라이브 등록 중…';
+
+    // 1) /profile — 검색 가능한 엔티티로 등록/갱신
     const profileRes = await fetch('https://hondi-proxy.tensor-city.workers.dev/profile', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...profilePayload, ts, signature }),
+      body: JSON.stringify({
+        ...profilePayload,
+        guid: signed.guid, pubkey: signed.pubkey, ts: signed.ts, signature: signed.signature,
+      }),
     });
     const profileData = await profileRes.json();
     if (!profileRes.ok) throw new Error(profileData.detail || `/profile 실패 (${profileRes.status})`);
@@ -1271,7 +1291,7 @@ async function _registerSellerLive(sellerData) {
       await window.SellerCatalog.forceSync();
     }
 
-    statusEl.textContent = `✅ 라이브 등록 완료 (guid: ${wallet.guid.slice(0, 24)}…) — K-Market 검색에 노출됩니다.`;
+    statusEl.textContent = `✅ 라이브 등록 완료 (guid: ${signed.guid.slice(0, 24)}…) — K-Market 검색에 노출됩니다.`;
     statusEl.style.color = '#1a9e6a';
   } catch (e) {
     console.warn('[LiveRegister] 실패:', e.message);
