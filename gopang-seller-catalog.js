@@ -27,6 +27,23 @@
   let _syncInFlight = false;
   let _syncPending = false;
 
+  const INDUSTRY_KEY = 'gopang_seller_industry_fields';
+
+  // AI비서(SP-MKT_seller_site 등)가 온보딩 시 판단한 업종을 로컬에
+  // 저장 — 이후 모든 /biz/catalog/sync 호출에 함께 실어 보낸다.
+  // 이 함수를 호출하지 않으면 서버가 카테고리 키워드 매칭으로 폴백한다
+  // (정확도 낮음, 최후 수단).
+  function setIndustryFields(fields) {
+    if (!fields || !fields.schema_id) return;
+    try { localStorage.setItem(INDUSTRY_KEY, JSON.stringify(fields)); }
+    catch (e) { console.warn('[Catalog] industry_fields 로컬 저장 실패:', e.message); }
+  }
+
+  function _getIndustryFields() {
+    try { return JSON.parse(localStorage.getItem(INDUSTRY_KEY) || 'null'); }
+    catch (e) { return null; }
+  }
+
   function _openDB() {
     if (_db) return Promise.resolve(_db);
     return new Promise((resolve, reject) => {
@@ -106,7 +123,9 @@
         return;
       }
       const products = await listProducts();
+      const industryFields = _getIndustryFields();
       const payload = { guid: wallet.guid, pubkey: wallet.publicKeyB64u, products };
+      if (industryFields) payload.industry_fields = industryFields;
       const msgBytes = new TextEncoder().encode(JSON.stringify(payload));
       const sigBuf = await crypto.subtle.sign('Ed25519', wallet._privKey, msgBytes);
       const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)))
@@ -164,6 +183,6 @@
 
   global.SellerCatalog = {
     listProducts, getProduct, putProduct, removeProduct,
-    forceSync: _runSync, hydrateFromServerIfEmpty,
+    forceSync: _runSync, hydrateFromServerIfEmpty, setIndustryFields,
   };
 })(window);

@@ -1622,6 +1622,11 @@ async function _initSellerCatalog() {
       for (const p of SELLER_DATA.products) {
         await window.SellerCatalog.putProduct({ ...p });
       }
+      // AI비서(SP-MKT_seller_site)가 판단한 업종을 로컬에 저장 — 이후
+      // 모든 동기화에 함께 실려가 백엔드가 키워드 추측 대신 이 값을 쓴다.
+      if (SELLER_DATA.industry_fields?.schema_id) {
+        window.SellerCatalog.setIndustryFields(SELLER_DATA.industry_fields);
+      }
       console.log('[Catalog] 신규 판매자 — LLM 추출 시드', SELLER_DATA.products.length, '개를 로컬에 저장(자동 동기화 예약됨)');
     }
     const local = await window.SellerCatalog.listProducts();
