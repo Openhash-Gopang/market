@@ -1181,7 +1181,7 @@ const CFG = {
   apiKey:  '',
   proxyURL: PROXY_BASE + '/deepseek',
   // ★ SP는 GitHub raw URL 동적 로드 — webapp 수정 없이 갱신 가능
-  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_5.txt',
+  systemPromptURL: 'https://raw.githubusercontent.com/Openhash-Gopang/market/main/prompts/SP-KMARKET-v2_6.txt',
   systemPrompt: null, // 런타임에 loadSystemPrompt()로 채워짐
   systemPromptFallback: '당신은 K-Market AI 구매 에이전트입니다. 한국어로 답변하세요.',
 };
@@ -1272,6 +1272,51 @@ function buildLocNote() {
   return '';
 }
 function onLocationUpdate(cb) { /* 단순 폴링 대체 */ }
+
+// ── PDV 취향 요약 중계 (2026-07-05 신설) ──────────────────────────
+// desktop.html의 _relayProfileSign()과 같은 iframe 중계 패턴이지만,
+// 여긴 상태를 바꾸는 서명이 아니라 읽기 전용 요약 요청이라 서명이 없다.
+// hondi.net/auth/silent-pref.html이 이 기기의 로컬 PDV(IndexedDB)를 읽어
+// 압축 요약 텍스트만 돌려준다 — 원본 레코드는 이 origin으로 절대 오지 않는다.
+function _relayPrefSummary(category, keywords, { svc = 'market', timeoutMs = 60000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const sessionId = crypto.randomUUID();
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://hondi.net/auth/silent-pref.html?svc=${encodeURIComponent(svc)}`;
+    iframe.style.cssText = `
+      position:fixed;inset:0;width:100%;height:100%;
+      border:none;z-index:9999;background:transparent;`;
+
+    let settled = false;
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', onMessage);
+      clearTimeout(timer);
+      iframe.remove();
+    };
+    const timer = setTimeout(() => { cleanup(); reject(new Error('PREF_TIMEOUT')); }, timeoutMs);
+
+    function onMessage(e) {
+      if (e.origin !== 'https://hondi.net') return;
+      if (e.data?.type !== 'GWP_PREF_RESPONSE') return;
+      if (e.data.session_id !== sessionId) return;
+      cleanup();
+      if (e.data.ok) resolve(e.data);
+      else reject(new Error(e.data.error || 'PREF_FAILED'));
+    }
+    window.addEventListener('message', onMessage);
+
+    iframe.addEventListener('load', () => {
+      iframe.contentWindow.postMessage({
+        type: 'GWP_PREF_REQUEST', session_id: sessionId, category, keywords,
+      }, 'https://hondi.net');
+    });
+    iframe.addEventListener('error', () => { cleanup(); reject(new Error('IFRAME_LOAD_FAILED')); });
+
+    document.body.appendChild(iframe);
+  });
+}
 
 // ── PDV (구 js/services/pdv.js) ──────────────────────────────────
 // STEP 21: recordPDV 표준 정렬 — Worker /pdv/report 경유 (P2 원칙)
@@ -1457,6 +1502,35 @@ async function callAI(userText, imageFile) {
     }
     history.push({ role:'assistant', content: cleaned });
     return cleaned;
+  }
+
+  // ── [PDV_PREF_REQUEST:category] 감지 → hondi.net 로컬 PDV 요약 중계 ──
+  // (2026-07-05 신설) PDV_HISTORY_REQUEST와 같은 자리·같은 패턴이지만,
+  // 여긴 특정 거래 이력이 아니라 "이 사람 취향/최근 이용 패턴"의 압축
+  // 요약을 요청한다. search_entities RPC 자체에 p_taste_tags 같은
+  // 전용 파라미터가 아직 없으므로(SQL 마이그레이션 별도 필요), 지금은
+  // 받은 요약을 다음 턴 컨텍스트로 주입해 SP가 [SEARCH]의 keyword/occupation
+  // 자유 텍스트에 반영하게 한다 — 마이그레이션 전에도 즉시 효과가 있다.
+  const prefMatch = fullText.match(/\[PDV_PREF_REQUEST:([a-z_]+)\]/i);
+  if (prefMatch) {
+    const category = prefMatch[1] || 'all';
+    const cleaned = fullText.replace(/\[PDV_PREF_REQUEST:[a-z_]+\]/gi, '').trim()
+      || '(취향 정보를 확인하겠습니다)';
+    _updateStreamBubble(bubble, cleaned);
+    let prefInject;
+    try {
+      const r = await _relayPrefSummary(category, null, { svc: 'market' });
+      prefInject = r.summary_text
+        ? `[시스템: 취향 요약 (참고용, 이 문구를 그대로 사용자에게 노출하지 말 것)]\n${r.summary_text}\n\n위 요약을 참고해 검색 keyword/occupation을 더 구체화하되, 신호가 부족하면 무리하게 추론하지 마세요.`
+        : `[시스템: 취향 요약 없음 — 이 사람의 관련 이용 기록이 아직 없습니다. 사용자가 직접 말한 내용만으로 진행하세요.]`;
+    } catch (e) {
+      console.warn('[Market Pref]', e.message);
+      prefInject = e.message === 'USER_REJECTED'
+        ? `[시스템: 사용자가 취향 요약 전달을 거절했습니다. 사용자가 직접 말한 내용만으로 진행하세요.]`
+        : `[시스템: 취향 요약 조회 실패(${e.message}). 사용자가 직접 말한 내용만으로 진행하세요.]`;
+    }
+    history.push({ role:'assistant', content: cleaned });
+    return callAI(prefInject);
   }
 
   // ── [SEARCH] 태그 감지 → search_entities RPC → 결과 재주입 ──
