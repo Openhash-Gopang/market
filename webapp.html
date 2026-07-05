@@ -1186,15 +1186,10 @@ const CFG = {
   systemPromptFallback: '당신은 K-Market AI 구매 에이전트입니다. 한국어로 답변하세요.',
 };
 
-const GWP_REGISTRY = {
-  'market': { url: 'https://market.hondi.net/webapp.html', name: 'K-Market' },
-  'school': { url: 'https://school.hondi.net/webapp.html', name: 'K-School' },
-  'klaw':   { url: 'https://klaw.hondi.net/webapp.html',   name: 'K-Law' },
-};
-
-const DOMAIN_DETECT   = {};
-const EXPERT_SP_MAP   = {};
-const EXPERT_KEYWORDS = [];
+// 2026-07-05 cleanup: 이 파일에 있던 로컬 GWP_REGISTRY(market/school/klaw
+// 3개 항목)와 DOMAIN_DETECT/EXPERT_SP_MAP/EXPERT_KEYWORDS는 파일 전체에서
+// 어디서도 참조되지 않는 죽은 코드로 확인되어 제거함. 실제 살아있는
+// 서비스 라우팅은 gopang/src/gopang/ai/router.js + SP-00-ROUTER가 전담.
 
 // ── location (구 js/core/location.js) ────────────────────────────
 let userLocation   = null;
