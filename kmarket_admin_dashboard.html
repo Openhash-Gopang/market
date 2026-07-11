@@ -923,6 +923,41 @@ async function sendBizChat() {
     _appendBizMsg('ai', `죄송합니다, 일시적 오류가 발생했습니다(${e.message}). 잠시 후 다시 시도해 주세요.`);
   }
 }
+
+// ── GWP ctx 수신 → 사용자 지시 자동 전송 (2026-07-11 추가) ──────────
+// gwp-registry.js의 kbusiness 항목(type:'tab')이 _gwpLaunch()로 이 페이지를
+// 열 때 ctx 파라미터로 원본 지시를 실어 보내는데, 지금까지 이 페이지엔
+// 그걸 받는 로직이 전혀 없어서 메인 포털에서 "부가세 신고 언제까지야?"라고
+// 물어 K-Business 탭이 열려도 그 질문이 여기 도착하지 않고 사용자가
+// 채팅창을 직접 열어 처음부터 다시 입력해야 했다. 같은 저장소의
+// webapp.html이 이미 쓰고 있는 것과 동일한 패턴으로 맞춘다.
+(function _receiveGwpCtx() {
+  const params  = new URLSearchParams(location.search);
+  const isGWP   = params.get('gwp') === '1';
+  const ctxRaw  = params.get('ctx') || '';
+  const ctxEnc  = params.get('ctx_enc');
+  if (!isGWP || !ctxRaw) return;
+
+  window.addEventListener('DOMContentLoaded', () => {
+    try {
+      const ctx = ctxEnc === 'b64'
+        ? decodeURIComponent(escape(atob(ctxRaw)))
+        : decodeURIComponent(ctxRaw);
+      console.info('[GWP] ctx 수신:', ctx);
+
+      const panel = document.getElementById('biz-chat-panel');
+      if (panel && !panel.classList.contains('open')) toggleBizChat();
+
+      const bizInput = document.getElementById('biz-chat-input');
+      if (bizInput && ctx) {
+        bizInput.value = ctx;
+        setTimeout(() => sendBizChat(), 100);
+      }
+    } catch (e) {
+      console.warn('[GWP] ctx 복원 실패:', e.message);
+    }
+  });
+})();
 </script>
 <!-- AI 경영 어드바이저 (k-business/business-kr 연동, 2026-07-05) -->
 <button class="biz-chat-fab" id="biz-chat-fab" onclick="toggleBizChat()">
