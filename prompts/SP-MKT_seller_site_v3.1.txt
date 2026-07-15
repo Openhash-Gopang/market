@@ -168,12 +168,24 @@ RULE-01 금지-8(허위·가상 데이터 생성 절대 금지 — 구매자 쪽
 ### because the market system uses it to determine occupation
 ### automatically; the seller never picks an industry category
 ### themselves.)
-- product:  id(slug), name, desc, price(number), unit, category, origin, stock("in"|"low"|"out"), image_url("")
+- product:  id(slug), name, desc, price(number), unit, category, origin, stock("in"|"low"|"out"), stock_qty(number|null), cost_price(number|null), image_url("")
 - service:  id, name, desc, price(number), unit, category, duration(e.g."40분"), available(true|false), image_url("")
 - delivery: id, name, desc, price(number), unit, category, eta(e.g."30분"), stock("in"|"out"), image_url("")
-- hybrid:   id, name, desc, price(number), unit, category, stock("in"|"low"|"out"), image_url("")
+- hybrid:   id, name, desc, price(number), unit, category, stock("in"|"low"|"out"), stock_qty(number|null), cost_price(number|null), image_url("")
 - price must be a number the seller actually stated. If a seller says
   "가격 문의" for an item, set price: null rather than guessing a number.
+- stock_qty(product/hybrid만★NEW v3.1) — 판매자가 정확한 재고 수량을
+  말했을 때만 그 숫자를 쓴다(예: "삼겹살 40개 있어요" → stock_qty:40).
+  "많아요"/"넉넉해요" 같은 정성적 표현이면 stock_qty:null로 두고
+  기존 stock("in"/"low"/"out")만 채운다 — 절대 그럴듯한 숫자를
+  추정해서 채우지 않는다. 채워지면 백엔드가 판매 시 자동으로
+  차감한다(재고 0이면 주문 자체가 거부됨 — 그래서 확신 없는 값을
+  넣으면 안 된다).
+- cost_price(product/hybrid만★NEW v3.1) — 판매자가 매입원가/원가를
+  직접 밝혔을 때만 채운다(예: "원가는 2만원 정도예요" → cost_price:
+  20000). 안 밝혔으면 cost_price:null — price와 똑같은 원칙이다.
+  이 값은 구매자에게 절대 노출되지 않고(백엔드가 공개 API에서
+  제외), 판매자 자신의 매출원가(COGS) 자동 계산에만 쓰인다.
 
 ### docs (from legal_info only — never invent a document)
 Each: title, type("registration"|"license"|"certification"|"other"), issued_by, issued_date, number, file_url("")
@@ -227,8 +239,11 @@ const SELLER_DATA = {
   industry_fields:{ schema_id:"01" },  // 농장 직판(가공 없이 사육→직접판매) — 제조업(10)이 아니라 농업(01)으로 판단한 예시
   legal:{ owner:"홍길동", reg_no:"616-12-34567", license_label:"축산물판매업신고번호", license_label_full:"사업자등록 및 축산물판매업 신고 완료", license_no:"제주-2024-0123" },
   gps:{ lat:33.3846, lng:126.2638, label:"제주시 한림읍" },
+  // stock_qty는 판매자가 "재고 40개"처럼 정확한 수량을 말한 예시,
+  // cost_price는 원가를 안 밝힌 예시(null) — 둘 다 실제로 판매자가
+  // 말한 것만 채우고 지어내지 않는다는 원칙을 그대로 보여준다.
   products:[
-    {id:"pork-belly",name:"흑돼지 삼겹살",desc:"제주 흑돼지 삼겹살 신선 냉장.",price:35000,unit:"1kg",category:"육류",origin:"제주도",stock:"in",image_url:""},
+    {id:"pork-belly",name:"흑돼지 삼겹살",desc:"제주 흑돼지 삼겹살 신선 냉장.",price:35000,unit:"1kg",category:"육류",origin:"제주도",stock:"in",stock_qty:40,cost_price:null,image_url:""},
   ],
   docs:[
     {title:"사업자등록증",type:"registration",issued_by:"제주세무서",issued_date:"2020-05-10",number:"616-12-34567",file_url:""},
