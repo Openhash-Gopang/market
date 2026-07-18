@@ -712,6 +712,33 @@ footer{background:#e8f5ee;color:#1a2e22;padding:36px 5%;font-size:14px}
   </div>
 </div>
 
+
+<!-- ── 정산 수수료 안내 (2026-07-18 신설) ──────────────────────────
+     이전엔 판매자가 실제 수수료율을 어디서도 확인할 수 없었다.
+     하드코딩하지 않고 매번 GET /biz/fee-rate로 조회한다 — 서버
+     PLATFORM_FEE_RATE가 바뀌면 이 화면도 재배포 없이 자동으로 새
+     값을 보여준다(profile.html 결제 화면과 동일한 정본 사용). -->
+<div id="fee-notice" style="padding:14px 5%;background:var(--bg2,#f8f8f8);font-size:13px;color:var(--text3);text-align:center">
+  정산 수수료 확인 중…
+</div>
+<script>
+(async function () {
+  const el = document.getElementById('fee-notice');
+  try {
+    const res  = await fetch('https://hondi-proxy.tensor-city.workers.dev/biz/fee-rate');
+    const data = await res.json();
+    if (data?.ok && typeof data.rate === 'number') {
+      const pct = (data.rate * 100).toFixed(1).replace(/\.0$/, '');
+      el.textContent = `판매 대금의 ${pct}%가 플랫폼 수수료로 차감되고, 나머지가 정산됩니다.`;
+    } else {
+      el.textContent = '정산 수수료 정보를 불러오지 못했습니다.';
+    }
+  } catch (e) {
+    el.textContent = '정산 수수료 정보를 불러오지 못했습니다.';
+  }
+})();
+</script>
+
 <hr class="sep"/>
 
 <!-- ── ANALYTICS ── -->
