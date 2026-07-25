@@ -861,6 +861,15 @@ function _buildBizContext() {
 
 let _bizHistory = [];
 
+// ── GWP 세션 식별(2026-07-25 신설) — GWP_DONE 미준수 대응 ─────────
+// K-Business 경영 어드바이저도 qna와 마찬가지로 "완료 단계"가 없는
+// 개방형 채팅이라, 답변마다 갱신되는 세션 보고 방식을 쓴다.
+const _bizGwpParams   = new URLSearchParams(location.search);
+const BIZ_GWP_MODE    = _bizGwpParams.get('gwp') === '1';
+const BIZ_GWP_ORIGIN  = _bizGwpParams.get('origin') || 'https://hondi.net';
+const _bizGwpSessionId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+const _bizGwpStartedAt = new Date().toISOString();
+
 function toggleBizChat() {
   const panel = document.getElementById('biz-chat-panel');
   panel.classList.toggle('open');
@@ -918,6 +927,21 @@ async function sendBizChat() {
     const reply = data.choices?.[0]?.message?.content || '(응답 없음)';
     _appendBizMsg('ai', reply);
     _bizHistory.push({ role: 'assistant', content: reply });
+    if (BIZ_GWP_MODE) {
+      import('https://hondi.net/src/gopang/gwp/gwp-report-client.js')
+        .then(({ reportGwpSessionEnd }) => reportGwpSessionEnd({
+          agencyId:         'kbusiness',
+          guid:             _bizGuid(),
+          messages:         _bizHistory,
+          resultText:       reply,
+          summaryLine:      `K-Business 경영 상담: ${text.slice(0, 60)}`,
+          gwpMode:          BIZ_GWP_MODE,
+          gwpOrigin:        BIZ_GWP_ORIGIN,
+          sessionId:        _bizGwpSessionId,
+          sessionStartedAt: _bizGwpStartedAt,
+        }))
+        .catch(e => console.warn('[GWP_DONE] kbusiness 보고 실패(무시):', e.message));
+    }
   } catch (e) {
     document.getElementById('biz-typing')?.remove();
     _appendBizMsg('ai', `죄송합니다, 일시적 오류가 발생했습니다(${e.message}). 잠시 후 다시 시도해 주세요.`);
