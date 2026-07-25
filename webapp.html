@@ -1817,6 +1817,7 @@ _setupGwpSignRequest();
           if (e.data?.type !== 'GWP_DONE') return;
           window.removeEventListener('message', gwpDoneHandler);
           window.removeEventListener('message', sellerResponseHandler);
+          _marketSessionReported = true; // 구매 완료로 정식 보고 수신 — beforeunload 등 중복 보고 방지
 
           const summary = e.data.summary || '주문 완료';
           appendBubble('ai', summary + '\n\n재무제표가 갱신되었습니다.');
@@ -1989,6 +1990,7 @@ async function _parseTrade(aiText, userText) {
     if (e.origin !== 'https://users.hondi.net' && e.origin !== 'https://hondi.net') return;
     if (e.data?.type !== 'GWP_DONE') return;
     window.removeEventListener('message', gwpHandler);
+    _marketSessionReported = true; // 구매 완료로 정식 보고 수신 — beforeunload 등 중복 보고 방지
 
     const summary = e.data.summary || '주문 완료';
     appendBubble('ai', summary + '\n\n재무제표가 갱신되었습니다.');
@@ -2045,6 +2047,45 @@ let recognition  = null;
 let typingEl     = null;
 let _progressSteps = [], _progressIdx = 0;
 let _lastLocNote = '';
+
+// ── GWP 세션 종료 보고(2026-07-26 신설) ───────────────────────────
+// 구매로 이어진 세션은 profile.html이 보낸 진짜 GWP_DONE이 이미 opener로
+// relay되므로(아래 두 곳의 gwpDoneHandler/gwpHandler), 그 경우
+// _marketSessionReported를 true로 세팅해 여기서 중복 발신되지 않게 막는다.
+// 구매 없이 끝난 상담 세션만 이 경로로 보고된다 — gopang 허브의
+// "예외 없이 보고" 폴백(_gwpFallbackReport, gopang저장소 engine.js)이 이미
+// 안전망으로 존재하지만 대화 내용이 없는 최소 기록만 남기므로, 가능하면
+// 이 정식 보고로 대체한다(check_gwp_report_compliance.py 🟡 항목 대응).
+const AGENCY_ID                = 'kcommerce';
+const _marketSessionId         = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2));
+const _marketSessionStartedAt  = new Date().toISOString();
+let   _marketSessionReported   = false;
+function _marketGuid() { return _user?.primary_guid || _user?.guid || _user?.ipv6 || 'anonymous'; }
+
+async function _reportMarketSessionEnd() {
+  if (_marketSessionReported) return;                  // 구매 완료로 이미 보고됨
+  if (!window.opener || window.opener.closed) return;   // GWP 경유 아님(직접 접속)
+  if (!history.length) return;                          // 실제 대화 없으면 보고 생략(노이즈 방지)
+  _marketSessionReported = true;  // fetch 완료를 기다리지 않고 먼저 세팅 — beforeunload/pagehide/
+                                   // visibilitychange가 겹쳐 발생해도 한 번만 보고되도록 함
+  try {
+    const { reportGwpSessionEnd } = await import('https://hondi.net/src/gopang/gwp/gwp-report-client.js');
+    const lastAi = [...history].reverse().find(m => m.role === 'assistant');
+    await reportGwpSessionEnd({
+      agencyId:         AGENCY_ID,
+      guid:             _marketGuid(),
+      messages:         history,
+      resultText:       lastAi?.content || '',
+      summaryLine:      'K-Market 상담 세션 종료(구매로 이어지지 않음)',
+      gwpMode:          true,
+      gwpOrigin:        'https://hondi.net',
+      sessionId:        _marketSessionId,
+      sessionStartedAt: _marketSessionStartedAt,
+    });
+  } catch (e) {
+    console.warn('[GWP] 세션 종료 보고 실패(무시 — 허브 폴백이 대신 기록함):', e.message);
+  }
+}
 
 const _INSTALL_DISMISSED_KEY = 'gopang_install_dismissed';
 const _INSTALL_DONE_KEY      = 'gopang_installed';
@@ -2448,9 +2489,13 @@ async function init(user) {
     wList.appendChild(wRow);
   }
 
-  // 세션 저장
-  const saveFn=()=>saveSessionOnce(history,classifyDomain);
+  // 세션 저장 + GWP 종료 보고(2026-07-26) — 구매로 이어지지 않은 상담도
+  // 이제 정식 reportGwpSessionEnd()로 보고한다(_reportMarketSessionEnd
+  // 내부에서 구매 완료 세션과의 중복을 자체적으로 막음). pagehide도 같이
+  // 걸어 모바일 Safari 등에서 beforeunload/visibilitychange 누락 시 대비.
+  const saveFn=()=>{ saveSessionOnce(history,classifyDomain); _reportMarketSessionEnd().catch(()=>{}); };
   window.addEventListener('beforeunload',saveFn);
+  window.addEventListener('pagehide',saveFn);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveFn();});
 
   updateSendBtn();
