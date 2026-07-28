@@ -1,6 +1,6 @@
 # `seller_products` PocketBase 컬렉션 스키마
 
-L1(`l1-hanlim.gopang.net`) 관리자 UI에서 **New collection**으로 생성합니다.
+L1(`l1-hanlim.hondi.net`) 관리자 UI에서 **New collection**으로 생성합니다.
 (worker.js `_l1SyncSellerProducts`/`_l1ListSellerProducts`가 참조하는 필드명과
 정확히 일치해야 합니다 — 철자 하나라도 다르면 조용히 null이 됩니다.)
 

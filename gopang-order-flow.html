@@ -538,7 +538,7 @@
       <div class="phase-num purple">①</div>
       <div class="phase-title-group">
         <h2>발화 → K-Market 실행</h2>
-        <span class="subtitle">gopang.net · gopang-app.js · callAI() · _gwpLaunch()</span>
+        <span class="subtitle">hondi.net · gopang-app.js · callAI() · _gwpLaunch()</span>
       </div>
     </div>
     <div class="phase-body">
@@ -560,12 +560,12 @@
         </div>
         <div class="step active">
           <div class="step-label">탭 오픈</div>
-          <div class="step-title">market.gopang.net 새 탭 실행</div>
+          <div class="step-title">market.hondi.net 새 탭 실행</div>
           <div class="step-desc">컨텍스트를 <code>btoa(unescape(encodeURIComponent(ctx)))</code>로 Base64 인코딩한 뒤 URL 파라미터로 전달합니다. 모바일 팝업 차단 우회를 위해 사용자 탭 직후 예약한 빈 탭(<code>_preTab</code>)의 URL을 교체합니다.</div>
-          <div class="code-block"><span class="ck">market.gopang.net</span>/webapp.html
+          <div class="code-block"><span class="ck">market.hondi.net</span>/webapp.html
   ?gwp=<span class="cs">1</span>
   &amp;token=<span class="cn">{_USER.guid}</span>
-  &amp;origin=<span class="cn">https://gopang.net</span>
+  &amp;origin=<span class="cn">https://hondi.net</span>
   &amp;ctx=<span class="cn">{base64}</span>
   &amp;ctx_enc=<span class="cs">b64</span></div>
         </div>
@@ -599,11 +599,11 @@
         <div class="step active">
           <div class="step-label">팝업</div>
           <div class="step-title">[OPEN_PROFILE] → profile.html 팝업</div>
-          <div class="step-desc">2차 LLM 호출에서 <code>[OPEN_PROFILE:{"handle":"@geumneung","guid":"dummy-hanlim-003"}]</code> 태그가 나오면 <code>users.gopang.net/profile.html</code>을 팝업으로 엽니다.</div>
-          <div class="code-block"><span class="ck">users.gopang.net</span>/profile.html
+          <div class="step-desc">2차 LLM 호출에서 <code>[OPEN_PROFILE:{"handle":"@geumneung","guid":"dummy-hanlim-003"}]</code> 태그가 나오면 <code>users.hondi.net/profile.html</code>을 팝업으로 엽니다.</div>
+          <div class="code-block"><span class="ck">users.hondi.net</span>/profile.html
   ?gwp=<span class="cs">1</span>
   &amp;guid=<span class="cn">dummy-hanlim-003</span>
-  &amp;opener_origin=<span class="cn">https://market.gopang.net</span></div>
+  &amp;opener_origin=<span class="cn">https://market.hondi.net</span></div>
         </div>
       </div>
       <div class="info-box teal">
@@ -671,7 +671,7 @@
 
       <div class="info-box purple">
         <span class="ib-label">도메인 격리</span>
-        <p><code>gopang.net</code>과 <code>users.gopang.net</code>은 IndexedDB가 완전히 분리됩니다. 서명은 반드시 gopang.net의 wallet에서 수행해야 합니다. profile.html에서 서명을 시도하면 별도 키가 생성되어 <code>UNREGISTERED_KEY (403)</code>가 발생합니다.</p>
+        <p><code>hondi.net</code>과 <code>users.hondi.net</code>은 IndexedDB가 완전히 분리됩니다. 서명은 반드시 hondi.net의 wallet에서 수행해야 합니다. profile.html에서 서명을 시도하면 별도 키가 생성되어 <code>UNREGISTERED_KEY (403)</code>가 발생합니다.</p>
       </div>
     </div>
   </div>
@@ -897,7 +897,7 @@ who_name:  <span class="cs">'GUID:'</span> + (_effectiveGuid?.slice(<span class=
     </div>
     <div class="mermaid-code"><span class="mc-kw">sequenceDiagram</span>
   autonumber
-  <span class="mc-kw">participant</span> G  <span class="mc-kw">as</span> <span class="mc-pt">gopang.net</span>
+  <span class="mc-kw">participant</span> G  <span class="mc-kw">as</span> <span class="mc-pt">hondi.net</span>
   <span class="mc-kw">participant</span> M  <span class="mc-kw">as</span> <span class="mc-pt">market / profile</span>
   <span class="mc-kw">participant</span> W  <span class="mc-kw">as</span> <span class="mc-pt">Worker</span>
   <span class="mc-kw">participant</span> L1 <span class="mc-kw">as</span> <span class="mc-pt">L1 PocketBase</span>
@@ -973,7 +973,7 @@ who_name:  <span class="cs">'GUID:'</span> + (_effectiveGuid?.slice(<span class=
 
 <!-- ── 푸터 ── -->
 <footer>
-  <span>AI City Inc. · 팀 주피터 · <a href="https://gopang.net">gopang.net</a></span>
+  <span>AI City Inc. · 팀 주피터 · <a href="https://hondi.net">hondi.net</a></span>
   <span>DAWN: Democracy is All We Need · MIT License · 2026-06-12</span>
 </footer>
 
