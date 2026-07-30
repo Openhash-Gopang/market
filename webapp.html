@@ -1369,6 +1369,51 @@ function initGWP(user) {
   });
 }
 function gwpMatch(text) { return false; }
+// ── 프로필 사진 업로드 (2026-07-30 신설) ────────────────────────────
+// profile-assistant.html의 검증된 구현을 이식 — 개인/사업자 프로필에
+// 쓰일 사진을 /profile/photo-upload(R2 저장)에 올린다. 이 엔드포인트는
+// Ed25519 서명을 요구한다(gopang-wallet.js의 signPayload/publicKeyB64u).
+// ★ 서명이나 지갑 준비 전이면 null을 반환한다 — 호출부(gwpLaunch)가
+// photoUrl:null이어도 계속 진행하도록 이미 관대하게 설계돼 있다.
+async function _fileToBase64Raw(file) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('파일 읽기 실패'));
+    reader.readAsDataURL(file);
+  });
+  return { base64: dataUrl.split(',')[1], mimeType: file.type };
+}
+
+async function uploadPhoto(file, guid) {
+  if (!file || !file.type?.startsWith('image/')) return null;
+  const wallet = window.gopangWallet;
+  if (!wallet?.signPayload || !wallet.publicKeyB64u) {
+    console.warn('[Market] 사진 업로드 보류 — 지갑 준비 전');
+    return null;
+  }
+  try {
+    const { base64, mimeType } = await _fileToBase64Raw(file);
+    const pubkey = wallet.publicKeyB64u;
+    const ts = String(Math.floor(Date.now() / 1000));
+    const signature = await wallet.signPayload(`${guid}:${pubkey}:${ts}`);
+    const res = await fetch(`${PROXY_BASE}/profile/photo-upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guid, pubkey, signature, ts, image_base64: base64, mime_type: mimeType }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!data.ok || !data.url) {
+      console.warn('[Market] 사진 업로드 실패:', data.detail || data.error || res.status);
+      return null;
+    }
+    return data.url;
+  } catch (e) {
+    console.warn('[Market] 사진 업로드 오류:', e.message);
+    return null;
+  }
+}
+
 async function gwpLaunch(svc, msg) {}
 function gwpClose() {
   if (_isGwp) window.parent.postMessage({ type:'GWP_CLOSE', svc:'market' }, _gwpOrigin);
