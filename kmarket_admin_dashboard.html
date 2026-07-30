@@ -389,6 +389,12 @@ setInterval(updateClock,1000); updateClock();
 function refreshAll(){ location.reload(); }
 
 // ── 초기화 ────────────────────────────────────────────
+// ★ 2026-07-30 버그 수정(발견) — BUSINESS_RELAY_URL이 이 파일 어디에도
+// 선언된 적이 없었다(ESLint no-undef로 발견 — node --check은 문법만 보고
+// 이런 런타임 ReferenceError는 못 잡는다). 즉 사업자 어드바이저 채팅
+// 전송 버튼을 누르면 지금까지 항상 ReferenceError로 실패했을 것이다.
+const BUSINESS_RELAY_URL = 'https://hondi-proxy.tensor-city.workers.dev/business/relay';
+
 (function init(){
   const name = document.getElementById('nav-store-name');
   if(name) name.textContent = STORE_NAME_PLACEHOLDER + ' — 관리자 (실데이터 연동 전)';
