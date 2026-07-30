@@ -423,6 +423,19 @@ const BIZ_GWP_ORIGIN  = _bizGwpParams.get('origin') || 'https://hondi.net';
 const _bizGwpSessionId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 const _bizGwpStartedAt = new Date().toISOString();
 
+// ★ 2026-07-30 신설 — engine.js의 _gwpLaunch()가 보내는 facts(currentLocation)
+// 파싱. K-Public(webapp.html)에서 같은 패턴으로 이미 적용·검증했다
+// (주피터 지시 — gov 도메인 하나가 아니라 릴레이 전반에 확장).
+let BIZ_GWP_CURRENT_LOCATION = null;
+if (_bizGwpParams.get('facts')) {
+  try {
+    const raw = (_bizGwpParams.get('facts_enc') === 'b64')
+      ? decodeURIComponent(escape(atob(_bizGwpParams.get('facts'))))
+      : decodeURIComponent(_bizGwpParams.get('facts'));
+    BIZ_GWP_CURRENT_LOCATION = JSON.parse(raw)?.currentLocation || null;
+  } catch (e) { console.warn('[K-Business] facts 파싱 실패(무시):', e.message); }
+}
+
 function toggleBizChat() {
   const panel = document.getElementById('biz-chat-panel');
   panel.classList.toggle('open');
@@ -472,6 +485,7 @@ async function sendBizChat() {
         max_tokens: 700,
         stream: false,
         tier: 'biz-flash',
+        currentLocation: BIZ_GWP_CURRENT_LOCATION,
       }),
     });
     document.getElementById('biz-typing')?.remove();
