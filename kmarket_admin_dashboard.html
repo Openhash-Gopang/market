@@ -384,11 +384,22 @@ body:has(.sidebar:hover) .main{margin-left:var(--swe)}
   <div id="section-strategy" style="display:none">
     <div class="dash-section">
       <div class="dash-section-title">경영 전략</div>
-      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400e;display:flex;gap:8px;align-items:flex-start">
-        <span style="flex-shrink:0">⚠️</span>
-        <span><strong>연동 안내:</strong> 이 계정에 연동된 실제 매출·재무 데이터가 없습니다. 이전 버전에는 "제주 흑돼지 농장"이라는 가상 사업체의 매출·손익계산서·직원 현황 등이 실제 데이터처럼 표시되어 있었는데, 지어낸 예시였습니다.</span>
+      <div class="dash-section-sub" style="margin-bottom:16px">마케팅 방안 제안 — 실제 등록 상품과 (선택) 상권 데이터를 근거로 AI가 제안합니다.</div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px">
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text4);margin-bottom:4px">위도(선택 — 상권 데이터 반영)</label>
+          <input id="mp-lat" type="number" step="0.000001" placeholder="33.4996" style="width:120px;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--mono);font-size:12px">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text4);margin-bottom:4px">경도(선택)</label>
+          <input id="mp-lng" type="number" step="0.000001" placeholder="126.5312" style="width:120px;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--mono);font-size:12px">
+        </div>
+        <button class="nav-btn" onclick="mpCopyFromTradeArea()" style="height:34px">상권분석 탭 값 가져오기</button>
+        <button class="nav-btn primary" id="mp-run-btn" onclick="mpRunAnalysis()" style="height:34px">마케팅 방안 생성</button>
       </div>
-      <div class="dash-section-sub" style="color:var(--text3);line-height:1.6">AI 경영 전략 과제 제시는 실제 데이터 연동 후 제공됩니다. 아래 AI 상담 채팅은 지금도 이용하실 수 있습니다.</div>
+
+      <div id="mp-result"></div>
     </div>
   </div>
 
@@ -442,6 +453,8 @@ function refreshAll(){ location.reload(); }
 const BUSINESS_RELAY_URL = 'https://hondi-proxy.tensor-city.workers.dev/business/relay';
 // 상권분석(2026-08-11 신설) — worker.js handleTradeAreaAnalysis
 const TRADE_AREA_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/trade-area-analysis';
+// 마케팅 방안 제안(2026-08-11 신설) — worker.js handleMarketingPlan
+const MARKETING_PLAN_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/marketing-plan';
 
 (function init(){
   const name = document.getElementById('nav-store-name');
@@ -657,6 +670,72 @@ function taRenderResult(data) {
     <div style="margin-top:10px;font-size:11px;color:var(--text4)">
       출처: 소상공인시장진흥공단 상가(상권)정보(공공데이터포털) · 국세청/카드사 집계 기반이라 최근 개·폐업이 즉시 반영되지 않을 수 있습니다. 매출·유동인구 추정치는 아직 제공하지 않습니다.
     </div>
+  `;
+}
+
+// ── 마케팅 방안 제안 (2026-08-11 신설) ───────────────────────────────
+function mpCopyFromTradeArea() {
+  const lat = document.getElementById('ta-lat')?.value;
+  const lng = document.getElementById('ta-lng')?.value;
+  if (!lat || !lng) {
+    alert('먼저 "상권분석" 탭에서 위치를 확인해 주세요.');
+    return;
+  }
+  document.getElementById('mp-lat').value = lat;
+  document.getElementById('mp-lng').value = lng;
+}
+
+async function mpRunAnalysis() {
+  const result = document.getElementById('mp-result');
+  const runBtn = document.getElementById('mp-run-btn');
+  const lat = document.getElementById('mp-lat').value.trim();
+  const lng = document.getElementById('mp-lng').value.trim();
+
+  result.innerHTML = `<div style="color:var(--text4);font-size:13px">생성 중… (등록 상품·상권 데이터를 근거로 AI가 작성합니다, 수 초 소요)</div>`;
+  runBtn.disabled = true;
+
+  try {
+    const params = new URLSearchParams({ guid: _bizGuid() });
+    if (lat && lng) { params.set('lat', lat); params.set('lng', lng); }
+    const res = await fetch(`${MARKETING_PLAN_URL}?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.message || ('HTTP ' + res.status));
+    mpRenderResult(data);
+  } catch (e) {
+    result.innerHTML = `<div style="color:var(--red);font-size:13px">생성 실패: ${_taEsc(e.message)}</div>`;
+  } finally {
+    runBtn.disabled = false;
+  }
+}
+
+function _mpList(title, items, color) {
+  if (!items || !items.length) return '';
+  const lis = items.map(it => `<li style="margin-bottom:4px">${_taEsc(it)}</li>`).join('');
+  return `<div style="margin-top:14px">
+    <div style="font-size:13px;font-weight:600;color:${color || 'var(--text2)'}">${_taEsc(title)}</div>
+    <ul style="margin:6px 0 0 18px;font-size:13px;color:var(--text3);line-height:1.7">${lis}</ul>
+  </div>`;
+}
+
+function mpRenderResult(data) {
+  const result = document.getElementById('mp-result');
+  const plan = data.plan || {};
+
+  const channels = (plan.channel_recommendations || []).map(c =>
+    `<li style="margin-bottom:4px"><strong>${_taEsc(c.channel)}</strong> — ${_taEsc(c.reason)}</li>`
+  ).join('');
+
+  result.innerHTML = `
+    <div style="font-size:11px;color:var(--text4);margin-bottom:10px">
+      근거 데이터: 등록 상품 ${data.catalog_item_count}건 · 상권 데이터 ${data.has_trade_area_data ? '반영됨' : '미반영(위치 미입력)'}
+    </div>
+    ${_mpList('핵심 고객층', plan.target_customers, 'var(--brand-dk)')}
+    ${channels ? `<div style="margin-top:14px"><div style="font-size:13px;font-weight:600">추천 채널</div>
+      <ul style="margin:6px 0 0 18px;font-size:13px;color:var(--text3);line-height:1.7">${channels}</ul></div>` : ''}
+    ${_mpList('차별화 포인트', plan.differentiation_points)}
+    ${_mpList('실행 아이디어', plan.promotion_ideas)}
+    ${plan.caveats && plan.caveats.length ? `<div style="margin-top:14px;padding:10px 14px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">
+      ⚠️ ${plan.caveats.map(_taEsc).join(' / ')}</div>` : ''}
   `;
 }
 
