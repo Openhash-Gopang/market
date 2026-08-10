@@ -247,6 +247,14 @@ body:has(.sidebar:hover) .main{margin-left:var(--swe)}
       <span class="sl">경영 전략</span>
     </button>
   </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">인증·점검</div>
+    <button class="sn" id="sn-hygiene" onclick="snActive(this);showSection('hygiene')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+      <span class="sl">위생점검</span>
+      <span class="sbadge green">NEW</span>
+    </button>
+  </div>
   <div class="sb-sec sb-sec-last">
     <button class="sn" id="sn-alerts-sb" onclick="snActive(this);showSection('alerts')">
       <span class="si"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
@@ -403,6 +411,32 @@ body:has(.sidebar:hover) .main{margin-left:var(--swe)}
     </div>
   </div>
 
+  <!-- ── 위생점검 (2026-08-11 신설) — 신설 백엔드 없음: 이미 배선돼 있었지만
+       클라이언트에서 아무도 호출하지 않던 /gov/sigungu-dept-resolve(도메인
+       health)를 처음으로 실사용에 연결. -->
+  <div id="section-hygiene" style="display:none">
+    <div class="dash-section">
+      <div class="dash-section-title">위생점검</div>
+      <div class="dash-section-sub">우리 가게 관할 보건소(위생 담당부서)를 찾아드립니다 — 실제 점검 일정·이력 조회는 아직 제공하지 않습니다.</div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px">
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text4);margin-bottom:4px">시군구(예: 제주시, 강남구)</label>
+          <input id="hy-city" type="text" placeholder="제주시" style="width:180px;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+        </div>
+        <button class="nav-btn primary" id="hy-run-btn" onclick="hyRunLookup()" style="height:34px">관할 보건소 찾기</button>
+      </div>
+
+      <div id="hy-result"></div>
+
+      <div style="margin-top:20px;padding:12px 14px;background:var(--bg-subtle);border-radius:8px;font-size:12px;color:var(--text3);line-height:1.7">
+        <strong>실제 위생점검·행정처분은 관할 보건소 전속 업무</strong>이며, 이 페이지는 담당부서를 찾아드릴 뿐입니다.
+        위생교육·영업신고 등 온라인 신청은 <a href="https://www.foodsafetykorea.go.kr" target="_blank" rel="noopener" style="color:var(--brand-dk)">식품안전나라</a>,
+        <a href="https://www.gov.kr" target="_blank" rel="noopener" style="color:var(--brand-dk)">정부24</a>에서 진행하실 수 있습니다.
+      </div>
+    </div>
+  </div>
+
   <div id="section-alerts" style="display:none">
     <div class="dash-section">
       <div class="dash-section-title">알림</div>
@@ -455,6 +489,9 @@ const BUSINESS_RELAY_URL = 'https://hondi-proxy.tensor-city.workers.dev/business
 const TRADE_AREA_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/trade-area-analysis';
 // 마케팅 방안 제안(2026-08-11 신설) — worker.js handleMarketingPlan
 const MARKETING_PLAN_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/marketing-plan';
+// 위생점검(2026-08-11 신설) — worker.js handleSigunguDeptResolve
+// (이미 있던 엔드포인트 — 지금까지 어떤 클라이언트 코드도 호출하지 않고 있었음)
+const SIGUNGU_DEPT_RESOLVE_URL = 'https://hondi-proxy.tensor-city.workers.dev/gov/sigungu-dept-resolve';
 
 (function init(){
   const name = document.getElementById('nav-store-name');
@@ -737,6 +774,45 @@ function mpRenderResult(data) {
     ${plan.caveats && plan.caveats.length ? `<div style="margin-top:14px;padding:10px 14px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">
       ⚠️ ${plan.caveats.map(_taEsc).join(' / ')}</div>` : ''}
   `;
+}
+
+// ── 위생점검 (2026-08-11 신설) ───────────────────────────────────────
+// BIZ_GWP_CURRENT_LOCATION은 engine.js의 _gwpLaunch()가 넘겨준 위치
+// facts(이 파일 상단에서 이미 파싱됨) — 있으면 시군구 입력칸을 채워둔다.
+(function _hyPrefillCity() {
+  const city = BIZ_GWP_CURRENT_LOCATION?.city || BIZ_GWP_CURRENT_LOCATION?.sigungu || null;
+  if (city) {
+    const el = document.getElementById('hy-city');
+    if (el) el.value = city;
+  }
+})();
+
+async function hyRunLookup() {
+  const city = document.getElementById('hy-city').value.trim();
+  const result = document.getElementById('hy-result');
+  const runBtn = document.getElementById('hy-run-btn');
+  if (!city) {
+    result.innerHTML = `<div style="color:var(--red);font-size:13px">시군구를 입력해 주세요(예: 제주시).</div>`;
+    return;
+  }
+  result.innerHTML = `<div style="color:var(--text4);font-size:13px">조회 중…</div>`;
+  runBtn.disabled = true;
+  try {
+    const params = new URLSearchParams({ city, domain: 'health' });
+    const res = await fetch(`${SIGUNGU_DEPT_RESOLVE_URL}?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+    result.innerHTML = `
+      <div style="padding:14px;background:var(--brand-bg);border:1px solid var(--brand);border-radius:8px;font-size:13px;line-height:1.6">
+        ${_taEsc(data.text || '조회 결과가 없습니다.')}
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text4)">${data.verified ? '✓ 확인됨' : '⚠ 실시간 검색 기반 — 방문·전화 전 명칭을 한 번 더 확인해 주세요'} · 출처: ${_taEsc(data.source || '')}</div>
+    `;
+  } catch (e) {
+    result.innerHTML = `<div style="color:var(--red);font-size:13px">조회 실패: ${_taEsc(e.message)}</div>`;
+  } finally {
+    runBtn.disabled = false;
+  }
 }
 
 // ── GWP ctx 수신 → 사용자 지시 자동 전송 (2026-07-11 추가) ──────────
