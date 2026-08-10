@@ -218,6 +218,11 @@ body:has(.sidebar:hover) .main{margin-left:var(--swe)}
       <span class="si"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
       <span class="sl">시장 비교</span>
     </button>
+    <button class="sn" id="sn-tradearea" onclick="snActive(this);showSection('tradearea')">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+      <span class="sl">상권분석</span>
+      <span class="sbadge green">NEW</span>
+    </button>
   </div>
   <div class="sb-sec">
     <div class="sb-lbl">재무</div>
@@ -300,6 +305,46 @@ body:has(.sidebar:hover) .main{margin-left:var(--swe)}
         <span><strong>연동 안내:</strong> 이 계정에 연동된 실제 매출·재무 데이터가 없습니다. 이전 버전에는 "제주 흑돼지 농장"이라는 가상 사업체의 매출·손익계산서·직원 현황 등이 실제 데이터처럼 표시되어 있었는데, 지어낸 예시였습니다.</span>
       </div>
       <div class="dash-section-sub" style="color:var(--text3);line-height:1.6">다른 판매자와의 시장 비교 분석은 실제 데이터 연동 후 제공됩니다. (참고: 비교 대상이 되는 시장 평균 자체도 아직 실제 집계 기능이 없습니다 — kmarket_national_dashboard.html 참고)</div>
+    </div>
+  </div>
+
+  <!-- ── 상권분석 (2026-08-11 신설) ── 이 섹션만 실제 공공데이터 연동됨.
+       위 다른 섹션들과 달리 "연동 안내" 경고 배너가 없다 — 진짜 데이터. -->
+  <div id="section-tradearea" style="display:none">
+    <div class="dash-section">
+      <div class="dash-section-title">상권분석</div>
+      <div class="dash-section-sub">반경 내 실제 점포 수·업종 밀집도(소상공인시장진흥공단 상가정보 공공데이터 기반) — 매출·유동인구 추정치는 아직 제공하지 않습니다.</div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px">
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text4);margin-bottom:4px">위치</label>
+          <button class="nav-btn" id="ta-geo-btn" onclick="taUseMyLocation()" style="height:34px">📍 현재 위치 사용</button>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text4);margin-bottom:4px">위도</label>
+          <input id="ta-lat" type="number" step="0.000001" placeholder="33.4996" style="width:120px;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--mono);font-size:12px">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text4);margin-bottom:4px">경도</label>
+          <input id="ta-lng" type="number" step="0.000001" placeholder="126.5312" style="width:120px;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-family:var(--mono);font-size:12px">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text4);margin-bottom:4px">반경(m)</label>
+          <select id="ta-radius" style="width:90px;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+            <option value="250">250</option>
+            <option value="500" selected>500</option>
+            <option value="1000">1000</option>
+            <option value="2000">2000</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text4);margin-bottom:4px">우리 업종(선택)</label>
+          <input id="ta-category" type="text" placeholder="예: 카페, 미용실" style="width:140px;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">
+        </div>
+        <button class="nav-btn primary" id="ta-run-btn" onclick="taRunAnalysis()" style="height:34px">상권분석 시작</button>
+      </div>
+
+      <div id="ta-result"></div>
     </div>
   </div>
 
@@ -395,6 +440,8 @@ function refreshAll(){ location.reload(); }
 // 이런 런타임 ReferenceError는 못 잡는다). 즉 사업자 어드바이저 채팅
 // 전송 버튼을 누르면 지금까지 항상 ReferenceError로 실패했을 것이다.
 const BUSINESS_RELAY_URL = 'https://hondi-proxy.tensor-city.workers.dev/business/relay';
+// 상권분석(2026-08-11 신설) — worker.js handleTradeAreaAnalysis
+const TRADE_AREA_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/trade-area-analysis';
 
 (function init(){
   const name = document.getElementById('nav-store-name');
@@ -520,6 +567,97 @@ async function sendBizChat() {
     document.getElementById('biz-typing')?.remove();
     _appendBizMsg('ai', `죄송합니다, 일시적 오류가 발생했습니다(${e.message}). 잠시 후 다시 시도해 주세요.`);
   }
+}
+
+// ── 상권분석 (2026-08-11 신설) ─────────────────────────────────────
+function taUseMyLocation() {
+  const btn = document.getElementById('ta-geo-btn');
+  if (!navigator.geolocation) {
+    alert('이 브라우저는 위치 정보를 지원하지 않습니다. 위도/경도를 직접 입력해 주세요.');
+    return;
+  }
+  btn.disabled = true; btn.textContent = '위치 확인 중…';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      document.getElementById('ta-lat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('ta-lng').value = pos.coords.longitude.toFixed(6);
+      btn.disabled = false; btn.textContent = '📍 현재 위치 사용';
+    },
+    (err) => {
+      alert('위치 확인에 실패했습니다(' + err.message + '). 위도/경도를 직접 입력해 주세요.');
+      btn.disabled = false; btn.textContent = '📍 현재 위치 사용';
+    },
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+}
+
+function _taEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+async function taRunAnalysis() {
+  const lat = parseFloat(document.getElementById('ta-lat').value);
+  const lng = parseFloat(document.getElementById('ta-lng').value);
+  const radius = document.getElementById('ta-radius').value;
+  const category = document.getElementById('ta-category').value.trim();
+  const result = document.getElementById('ta-result');
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    result.innerHTML = `<div style="color:var(--red);font-size:13px">위도·경도를 입력하거나 "현재 위치 사용"을 눌러 주세요.</div>`;
+    return;
+  }
+
+  result.innerHTML = `<div style="color:var(--text4);font-size:13px">조회 중…</div>`;
+  const runBtn = document.getElementById('ta-run-btn');
+  runBtn.disabled = true;
+
+  try {
+    const params = new URLSearchParams({ lat, lng, radius, category });
+    const res = await fetch(`${TRADE_AREA_URL}?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.message || ('HTTP ' + res.status));
+    taRenderResult(data);
+  } catch (e) {
+    result.innerHTML = `<div style="color:var(--red);font-size:13px">조회 실패: ${_taEsc(e.message)}</div>`;
+  } finally {
+    runBtn.disabled = false;
+  }
+}
+
+function taRenderResult(data) {
+  const result = document.getElementById('ta-result');
+  const rows = (data.top_middle_categories || []).map(r =>
+    `<tr><td style="padding:6px 10px;border-bottom:1px solid var(--border)">${_taEsc(r.name)}</td>` +
+    `<td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono)">${r.count}</td></tr>`
+  ).join('');
+
+  const competitorLine = (data.my_category_competitor_count != null)
+    ? `<div style="margin-top:12px;padding:10px 14px;background:var(--brand-bg);border:1px solid var(--brand);border-radius:8px;font-size:13px">
+         반경 ${data.radius}m 내 "<strong>${_taEsc(data.my_category_keyword)}</strong>" 관련 업소
+         <strong>${data.my_category_competitor_count}곳</strong> (반경 내 전체 ${data.total_store_count}곳 중)
+       </div>`
+    : '';
+
+  result.innerHTML = `
+    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px">
+      <div><span style="font-size:12px;color:var(--text4)">반경 내 전체 점포 수</span><br>
+        <span style="font-size:22px;font-weight:700;font-family:var(--mono)">${data.total_store_count}</span></div>
+      <div><span style="font-size:12px;color:var(--text4)">조회 반경</span><br>
+        <span style="font-size:22px;font-weight:700;font-family:var(--mono)">${data.radius}m</span></div>
+    </div>
+    ${competitorLine}
+    <div style="margin-top:16px;font-size:13px;font-weight:600;color:var(--text2)">업종별(중분류) 밀집도 Top 15</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:13px">
+      <thead><tr>
+        <th style="text-align:left;padding:6px 10px;border-bottom:2px solid var(--border2);color:var(--text4);font-weight:600;font-size:11px">업종(중분류)</th>
+        <th style="text-align:right;padding:6px 10px;border-bottom:2px solid var(--border2);color:var(--text4);font-weight:600;font-size:11px">점포 수</th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="2" style="padding:12px;color:var(--text4)">반경 내 조회된 점포가 없습니다.</td></tr>'}</tbody>
+    </table>
+    <div style="margin-top:10px;font-size:11px;color:var(--text4)">
+      출처: 소상공인시장진흥공단 상가(상권)정보(공공데이터포털) · 국세청/카드사 집계 기반이라 최근 개·폐업이 즉시 반영되지 않을 수 있습니다. 매출·유동인구 추정치는 아직 제공하지 않습니다.
+    </div>
+  `;
 }
 
 // ── GWP ctx 수신 → 사용자 지시 자동 전송 (2026-07-11 추가) ──────────
