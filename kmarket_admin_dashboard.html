@@ -260,6 +260,19 @@ body:has(.sidebar:hover) .main{margin-left:var(--swe)}
       <span class="sbadge green">NEW</span>
     </button>
   </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">운영</div>
+    <button class="sn" id="sn-inventory" onclick="snActive(this);showSection('inventory');invLoad()">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M21 8V21H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg></span>
+      <span class="sl">재고·공급망</span>
+      <span class="sbadge green">NEW</span>
+    </button>
+    <button class="sn" id="sn-staff" onclick="snActive(this);showSection('staff');stLoad()">
+      <span class="si"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      <span class="sl">인사·업무</span>
+      <span class="sbadge green">NEW</span>
+    </button>
+  </div>
   <div class="sb-sec sb-sec-last">
     <button class="sn" id="sn-alerts-sb" onclick="snActive(this);showSection('alerts')">
       <span class="si"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
@@ -451,6 +464,71 @@ body:has(.sidebar:hover) .main{margin-left:var(--swe)}
     </div>
   </div>
 
+  <!-- ── 재고·공급망 (2026-08-11 신설) ── -->
+  <div id="section-inventory" style="display:none">
+    <div class="dash-section">
+      <div class="dash-section-title">재고 관리(JIT)</div>
+      <div class="dash-section-sub">최근 판매 속도 기반 재주문 시점 계산 — order_queue 실거래 데이터 근거.</div>
+      <div id="inv-list" style="margin-top:12px"></div>
+
+      <div class="dash-section-title" style="margin-top:28px">공급업체</div>
+      <div class="dash-section-sub">재고가 부족한 상품의 담당 공급업체를 바로 확인하세요.</div>
+      <div id="sup-list" style="margin-top:12px"></div>
+      <div style="margin-top:14px;padding:14px;background:var(--bg-subtle);border-radius:8px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <input id="sup-name" type="text" placeholder="업체명" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <input id="sup-category" type="text" placeholder="취급 품목/카테고리" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <input id="sup-contact" type="text" placeholder="연락처" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <input id="sup-lead" type="number" placeholder="리드타임(일)" style="width:110px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <button class="nav-btn primary" onclick="supSave()">공급업체 추가</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 인사·업무 (2026-08-11 신설) ── -->
+  <div id="section-staff" style="display:none">
+    <div class="dash-section">
+      <div class="dash-section-title">인사·채용 관리</div>
+      <div class="dash-section-sub">지원자(candidate)와 재직자(employee)를 함께 관리합니다.</div>
+      <div id="staff-list" style="margin-top:12px"></div>
+      <div style="margin-top:14px;padding:14px;background:var(--bg-subtle);border-radius:8px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <select id="staff-type" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+            <option value="candidate">지원자</option>
+            <option value="employee">재직자</option>
+          </select>
+          <input id="staff-name" type="text" placeholder="이름" style="flex:1;min-width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <input id="staff-role" type="text" placeholder="직무" style="flex:1;min-width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <input id="staff-contact" type="text" placeholder="연락처" style="flex:1;min-width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <select id="staff-status" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+            <option value="applied">지원함</option>
+            <option value="interview">면접중</option>
+            <option value="hired">채용됨</option>
+            <option value="rejected">불합격</option>
+            <option value="active">재직중</option>
+            <option value="on_leave">휴직중</option>
+            <option value="terminated">퇴사</option>
+          </select>
+          <input id="staff-wage" type="number" placeholder="시급(원, 선택)" style="width:140px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <button class="nav-btn primary" onclick="staffSave()">등록</button>
+        </div>
+      </div>
+
+      <div class="dash-section-title" style="margin-top:28px">직원 업무·일정</div>
+      <div id="task-list" style="margin-top:12px"></div>
+      <div style="margin-top:14px;padding:14px;background:var(--bg-subtle);border-radius:8px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <input id="task-title" type="text" placeholder="업무명" style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <input id="task-due" type="date" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+          <button class="nav-btn primary" onclick="taskSave()">업무 추가</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="section-alerts" style="display:none">
     <div class="dash-section">
       <div class="dash-section-title">알림</div>
@@ -510,6 +588,14 @@ const SIGUNGU_DEPT_RESOLVE_URL = 'https://hondi-proxy.tensor-city.workers.dev/go
 const REVIEWS_LIST_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/reviews/list';
 const REVIEW_REPLY_DRAFT_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/reviews/reply-draft';
 const REVIEW_REPLY_SUBMIT_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/reviews/reply';
+// 재고·공급망·인사·업무(2026-08-11 신설)
+const INVENTORY_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/inventory/reorder-suggestions';
+const SUPPLIERS_LIST_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/suppliers/list';
+const SUPPLIERS_SAVE_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/suppliers/save';
+const STAFF_LIST_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/staff/list';
+const STAFF_SAVE_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/staff/save';
+const TASKS_LIST_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/staff-tasks/list';
+const TASKS_SAVE_URL = 'https://hondi-proxy.tensor-city.workers.dev/biz/staff-tasks/save';
 
 (function init(){
   const name = document.getElementById('nav-store-name');
@@ -905,6 +991,187 @@ async function rvPostReply(reviewId) {
     rvLoad();
   } catch (e) {
     alert('답글 등록 실패: ' + e.message);
+  }
+}
+
+// ── 재고관리(JIT) (2026-08-11 신설) ──────────────────────────────────
+async function invLoad() {
+  const box = document.getElementById('inv-list');
+  box.innerHTML = `<div style="color:var(--text4);font-size:13px">불러오는 중…</div>`;
+  try {
+    const res = await fetch(`${INVENTORY_URL}?${new URLSearchParams({ guid: _bizGuid() })}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+    if (!data.suggestions.length) {
+      box.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text4);font-size:13px">재고 수량이 추적되는 상품이 없습니다(등록 상품의 재고를 숫자로 입력하면 여기 표시됩니다).</div>`;
+    } else {
+      box.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr>
+          <th style="text-align:left;padding:6px;border-bottom:2px solid var(--border2);font-size:11px;color:var(--text4)">상품</th>
+          <th style="text-align:right;padding:6px;border-bottom:2px solid var(--border2);font-size:11px;color:var(--text4)">현재 재고</th>
+          <th style="text-align:right;padding:6px;border-bottom:2px solid var(--border2);font-size:11px;color:var(--text4)">일평균 판매</th>
+          <th style="text-align:right;padding:6px;border-bottom:2px solid var(--border2);font-size:11px;color:var(--text4)">소진까지</th>
+        </tr></thead>
+        <tbody>${data.suggestions.map(s => `
+          <tr style="${s.needs_reorder ? 'background:#fef3c7' : ''}">
+            <td style="padding:6px;border-bottom:1px solid var(--border)">${_taEsc(s.name)}${s.needs_reorder ? ' ⚠️' : ''}</td>
+            <td style="padding:6px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono)">${s.current_stock}</td>
+            <td style="padding:6px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono)">${s.daily_avg_sold}</td>
+            <td style="padding:6px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono)">${s.days_until_out != null ? s.days_until_out + '일' : '—'}</td>
+          </tr>`).join('')}</tbody>
+      </table>
+      <div style="margin-top:8px;font-size:11px;color:var(--text4)">⚠️ 표시는 7일 이내 소진 예상 — 아래 공급업체 목록에서 리드타임을 확인해 재주문하세요.</div>`;
+    }
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--red);font-size:13px">조회 실패: ${_taEsc(e.message)}</div>`;
+  }
+  supLoad();
+}
+
+async function supLoad() {
+  const box = document.getElementById('sup-list');
+  try {
+    const res = await fetch(`${SUPPLIERS_LIST_URL}?${new URLSearchParams({ guid: _bizGuid() })}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+    box.innerHTML = data.suppliers.length
+      ? data.suppliers.map(s => `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px">
+          <strong>${_taEsc(s.name)}</strong>${s.product_category ? ' · ' + _taEsc(s.product_category) : ''}
+          ${s.lead_time_days != null ? ` · 리드타임 ${s.lead_time_days}일` : ''}<br>
+          <span style="color:var(--text4);font-size:12px">${_taEsc(s.contact || '연락처 미등록')}</span>
+        </div>`).join('')
+      : `<div style="padding:14px;text-align:center;color:var(--text4);font-size:13px">등록된 공급업체가 없습니다.</div>`;
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--red);font-size:13px">조회 실패: ${_taEsc(e.message)}</div>`;
+  }
+}
+
+async function supSave() {
+  const name = document.getElementById('sup-name').value.trim();
+  if (!name) { alert('업체명을 입력해 주세요.'); return; }
+  try {
+    const res = await fetch(SUPPLIERS_SAVE_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seller_guid: _bizGuid(), name,
+        product_category: document.getElementById('sup-category').value.trim(),
+        contact: document.getElementById('sup-contact').value.trim(),
+        lead_time_days: document.getElementById('sup-lead').value || null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+    document.getElementById('sup-name').value = '';
+    document.getElementById('sup-category').value = '';
+    document.getElementById('sup-contact').value = '';
+    document.getElementById('sup-lead').value = '';
+    supLoad();
+  } catch (e) {
+    alert('등록 실패: ' + e.message);
+  }
+}
+
+// ── 인사·채용 관리 (2026-08-11 신설) ──────────────────────────────────
+const _STAFF_STATUS_LABEL = { applied: '지원함', interview: '면접중', hired: '채용됨', rejected: '불합격', active: '재직중', on_leave: '휴직중', terminated: '퇴사' };
+
+async function stLoad() {
+  const box = document.getElementById('staff-list');
+  box.innerHTML = `<div style="color:var(--text4);font-size:13px">불러오는 중…</div>`;
+  try {
+    const res = await fetch(`${STAFF_LIST_URL}?${new URLSearchParams({ guid: _bizGuid() })}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+    box.innerHTML = data.staff.length
+      ? data.staff.map(s => `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px;display:flex;justify-content:space-between">
+          <span><strong>${_taEsc(s.name)}</strong>${s.role ? ' · ' + _taEsc(s.role) : ''} <span style="color:var(--text4)">(${s.record_type === 'employee' ? '재직자' : '지원자'})</span></span>
+          <span style="color:var(--brand-dk)">${_taEsc(_STAFF_STATUS_LABEL[s.status] || s.status)}</span>
+        </div>`).join('')
+      : `<div style="padding:14px;text-align:center;color:var(--text4);font-size:13px">등록된 직원·지원자가 없습니다.</div>`;
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--red);font-size:13px">조회 실패: ${_taEsc(e.message)}</div>`;
+  }
+  tkLoad();
+}
+
+async function staffSave() {
+  const name = document.getElementById('staff-name').value.trim();
+  if (!name) { alert('이름을 입력해 주세요.'); return; }
+  try {
+    const res = await fetch(STAFF_SAVE_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seller_guid: _bizGuid(), name,
+        record_type: document.getElementById('staff-type').value,
+        role: document.getElementById('staff-role').value.trim(),
+        contact: document.getElementById('staff-contact').value.trim(),
+        status: document.getElementById('staff-status').value,
+        hourly_wage_krw: document.getElementById('staff-wage').value || null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+    document.getElementById('staff-name').value = '';
+    document.getElementById('staff-role').value = '';
+    document.getElementById('staff-contact').value = '';
+    document.getElementById('staff-wage').value = '';
+    stLoad();
+  } catch (e) {
+    alert('등록 실패: ' + e.message);
+  }
+}
+
+// ── 직원 업무·일정관리 (2026-08-11 신설) ────────────────────────────
+async function tkLoad() {
+  const box = document.getElementById('task-list');
+  try {
+    const res = await fetch(`${TASKS_LIST_URL}?${new URLSearchParams({ guid: _bizGuid() })}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+    box.innerHTML = data.tasks.length
+      ? data.tasks.map(t => `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+          <span><strong>${_taEsc(t.title)}</strong>${t.due_at ? ' · ' + _taEsc(t.due_at.slice(0, 10)) : ''}</span>
+          <select onchange="taskUpdateStatus('${_taEsc(t.id)}', this.value)" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px">
+            <option value="todo" ${t.status === 'todo' ? 'selected' : ''}>할 일</option>
+            <option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>진행중</option>
+            <option value="done" ${t.status === 'done' ? 'selected' : ''}>완료</option>
+          </select>
+        </div>`).join('')
+      : `<div style="padding:14px;text-align:center;color:var(--text4);font-size:13px">등록된 업무가 없습니다.</div>`;
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--red);font-size:13px">조회 실패: ${_taEsc(e.message)}</div>`;
+  }
+}
+
+async function taskSave() {
+  const title = document.getElementById('task-title').value.trim();
+  if (!title) { alert('업무명을 입력해 주세요.'); return; }
+  try {
+    const res = await fetch(TASKS_SAVE_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seller_guid: _bizGuid(), title, due_at: document.getElementById('task-due').value || null, status: 'todo' }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+    document.getElementById('task-title').value = '';
+    document.getElementById('task-due').value = '';
+    tkLoad();
+  } catch (e) {
+    alert('등록 실패: ' + e.message);
+  }
+}
+
+async function taskUpdateStatus(id, status) {
+  try {
+    const res = await fetch(TASKS_SAVE_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, seller_guid: _bizGuid(), status }),
+    });
+    if (!res.ok) throw new Error('업데이트 실패');
+  } catch (e) {
+    alert(e.message);
   }
 }
 
