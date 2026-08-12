@@ -1385,6 +1385,33 @@ async function _fileToBase64Raw(file) {
   return { base64: dataUrl.split(',')[1], mimeType: file.type };
 }
 
+// ★2026-08-12 — pdv_log(Supabase) 직접조회 대체용 공용 헬퍼.
+// pdv_records(PocketBase, /pdv/report가 쓰는 전역 PDV 저장소)를
+// 본인 guid로만 필터해서 읽어온다. uploadPhoto()와 동일한 서명 패턴.
+// README_SECRETS_INCIDENT.md 참조.
+async function _fetchMyPdvRecords(guid, limit) {
+  const wallet = window.gopangWallet;
+  if (!wallet?.signPayload || !wallet.publicKeyB64u) {
+    console.warn('[Market] PDV 조회 보류 — 지갑 준비 전');
+    return [];
+  }
+  try {
+    const pubkey = wallet.publicKeyB64u;
+    const ts = String(Math.floor(Date.now() / 1000));
+    const signature = await wallet.signPayload(`pdv-my-records:${guid}:${pubkey}:${ts}`);
+    const limitParam = limit ? `&limit=${limit}` : '';
+    const res = await fetch(
+      `${PROXY_BASE}/pdv/my-records?guid=${encodeURIComponent(guid)}`
+      + `&pubkey=${encodeURIComponent(pubkey)}&signature=${encodeURIComponent(signature)}&ts=${ts}${limitParam}`
+    );
+    const data = await res.json().catch(() => ({ items: [] }));
+    return data.items || [];
+  } catch (e) {
+    console.warn('[Market] PDV 조회 실패:', e.message);
+    return [];
+  }
+}
+
 async function uploadPhoto(file, guid) {
   if (!file || !file.type?.startsWith('image/')) return null;
   const wallet = window.gopangWallet;
@@ -2614,11 +2641,7 @@ async function loadPDV() {
   el.innerHTML = '<div style="text-align:center;color:var(--label-2);font-size:13px;padding:20px;">불러오는 중…</div>';
 
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/pdv_log?user_guid=eq.${user.guid}&order=created_at.desc&limit=20`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
-    );
-    const rows = await res.json();
+    const rows = await _fetchMyPdvRecords(user.guid, 20);
     if (!rows.length) {
       el.innerHTML = '<div style="text-align:center;color:var(--label-2);font-size:13px;padding:20px;">기록이 없습니다.</div>';
       return;
@@ -2670,11 +2693,7 @@ async function _handlePDVCommand(text) {
   }
   appendBubble('ai', 'PDV 기록을 불러오는 중…', true);
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/pdv_log?user_guid=eq.${user.guid}&order=created_at.desc&limit=10`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
-    );
-    const rows = await res.json();
+    const rows = await _fetchMyPdvRecords(user.guid, 10);
     if (!rows.length) {
       appendBubble('ai', '아직 PDV 기록이 없습니다.', true);
       return true;
@@ -2798,11 +2817,7 @@ async function loadPDVPanel() {
   }
   el.innerHTML = '<div style="text-align:center;color:var(--label-2);padding:40px;">불러오는 중…</div>';
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/pdv_log?user_guid=eq.${user.guid}&order=created_at.desc&limit=50`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
-    );
-    const rows = await res.json();
+    const rows = await _fetchMyPdvRecords(user.guid, 50);
     if (!rows.length) {
       el.innerHTML = '<div style="text-align:center;color:var(--label-2);padding:40px;">기록이 없습니다.</div>';
       return;
@@ -2905,16 +2920,16 @@ async function exportPDV(format = 'json') {
   const user = _user;
 
   // Supabase에서 전체 데이터 가져오기
+  // ★2026-08-12 — 서버(/pdv/my-records)가 최대 50건까지만 반환한다
+  // (handleTxHistory와 동일한 플랫폼 공통 상한). 원래 Supabase 쪽은
+  // limit 없이 전체를 가져왔으나, 이관 후에는 최근 50건으로 제한된다 —
+  // exportPDV()가 "전체 내보내기"로 안내하는 문구가 있다면 함께 확인 필요.
   let rows = [];
   if (user?.guid) {
     try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/pdv_log?user_guid=eq.${user.guid}&order=created_at.desc`,
-        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
-      );
-      rows = await res.json();
+      rows = await _fetchMyPdvRecords(user.guid, 50);
     } catch(e) {
-      console.warn('[PDV] Supabase 조회 실패, IndexedDB 사용:', e.message);
+      console.warn('[PDV] PocketBase 조회 실패, IndexedDB 사용:', e.message);
     }
   }
 
