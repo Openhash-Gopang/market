@@ -1504,6 +1504,8 @@ async function callAI(userText, imageFile) {
       body: JSON.stringify({
         model: CFG.model,
         service_id: 'kcommerce', // 2026-07-05: UNIVERSAL 레이어 강제 주입
+        guid: _marketGuid(),
+        phone_verify_token: _marketPhoneToken(),
         messages,
         stream: true,
         max_tokens: 800,
@@ -1698,7 +1700,7 @@ async function callAI(userText, imageFile) {
       const res2 = await fetch(PROXY_BASE + '/deepseek', {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ model: CFG.model, service_id: 'kcommerce', messages: messages2, stream: true, max_tokens: 800, thinking: { type: "disabled" } }),
+        body: JSON.stringify({ model: CFG.model, service_id: 'kcommerce', guid: _marketGuid(), phone_verify_token: _marketPhoneToken(), messages: messages2, stream: true, max_tokens: 800, thinking: { type: "disabled" } }),
       });
       if (res2.ok) {
         const reader2 = res2.body.getReader();
@@ -2133,6 +2135,11 @@ const _marketSessionId         = (crypto.randomUUID ? crypto.randomUUID() : Stri
 const _marketSessionStartedAt  = new Date().toISOString();
 let   _marketSessionReported   = false;
 function _marketGuid() { return _user?.primary_guid || _user?.guid || _user?.ipv6 || 'anonymous'; }
+// 2026-09-07 신설 — _user는 오늘 제거된 구 subsystem-auth.js의
+// window._onGopangAuth 콜백으로만 채워지던 값이라, 그 스크립트가
+// 지워진 지금은 영원히 null이다(회귀). k-service-auth-client.js
+// 로그인 상태를 확인해 phone_verify_token으로 대체 인증한다.
+function _marketPhoneToken() { return (_marketGuid() === 'anonymous' && window.KAuth && KAuth.hasValidLogin()) ? KAuth.getToken() : null; }
 
 async function _reportMarketSessionEnd() {
   if (_marketSessionReported) return;                  // 구매 완료로 이미 보고됨
